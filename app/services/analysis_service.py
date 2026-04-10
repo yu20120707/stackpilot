@@ -16,6 +16,7 @@ from app.models.contracts import (
     ConfidenceLevel,
     KnowledgeCitation,
     ReplyPayload,
+    SourceType,
     StructuredSummary,
     TemporaryFailureReply,
     TodoDraftItem,
@@ -100,7 +101,7 @@ class AnalysisService:
             cleaned_response = cleaned_response.strip("`")
             cleaned_response = cleaned_response.removeprefix("json").strip()
 
-        payload = json.loads(cleaned_response)
+        payload = self._normalize_summary_payload(json.loads(cleaned_response))
         summary = StructuredSummary.model_validate(payload)
 
         if summary.status not in {
@@ -110,6 +111,114 @@ class AnalysisService:
             raise ValueError("LLM returned unsupported status for structured summary")
 
         return summary
+
+    def _normalize_summary_payload(self, payload: object) -> dict:
+        if not isinstance(payload, dict):
+            raise ValueError("LLM summary payload must be a JSON object")
+
+        normalized_payload = dict(payload)
+        status = normalized_payload.get("status")
+        if isinstance(status, str):
+            normalized_payload["status"] = self._normalize_status(status)
+
+        impact_scope = normalized_payload.get("impact_scope")
+        if isinstance(impact_scope, list):
+            normalized_payload["impact_scope"] = " ".join(
+                item.strip()
+                for item in impact_scope
+                if isinstance(item, str) and item.strip()
+            )
+
+        citations = normalized_payload.get("citations")
+        if isinstance(citations, list):
+            normalized_payload["citations"] = [
+                normalized_citation
+                for item in citations
+                if (normalized_citation := self._normalize_citation(item)) is not None
+            ]
+
+        return normalized_payload
+
+    def _normalize_status(self, status: str) -> str:
+        normalized = status.strip()
+        status_map = {
+            "mitigation_in_progress": AnalysisResultStatus.SUCCESS.value,
+            "monitoring": AnalysisResultStatus.SUCCESS.value,
+            "investigating": AnalysisResultStatus.SUCCESS.value,
+            "analysis_complete": AnalysisResultStatus.SUCCESS.value,
+            "needs_more_info": AnalysisResultStatus.INSUFFICIENT_CONTEXT.value,
+            "need_more_info": AnalysisResultStatus.INSUFFICIENT_CONTEXT.value,
+        }
+        return status_map.get(normalized, normalized)
+
+    def _normalize_citation(self, item: object) -> dict | None:
+        if isinstance(item, dict):
+            source_type = item.get("source_type")
+            normalized_source_type = self._normalize_source_type(source_type)
+            if normalized_source_type is None:
+                return None
+
+            source_uri = item.get("source_uri")
+            label = item.get("label")
+            snippet = item.get("snippet")
+            if not isinstance(source_uri, str) or not source_uri.strip():
+                return None
+
+            normalized_source_uri = source_uri.strip()
+            normalized_label = (
+                label.strip()
+                if isinstance(label, str) and label.strip()
+                else normalized_source_uri.rsplit("/", maxsplit=1)[-1]
+            )
+            normalized_snippet = (
+                snippet.strip()
+                if isinstance(snippet, str) and snippet.strip()
+                else normalized_source_uri
+            )
+
+            return {
+                "source_type": normalized_source_type,
+                "label": normalized_label,
+                "source_uri": normalized_source_uri,
+                "snippet": normalized_snippet,
+            }
+
+        if not isinstance(item, str):
+            return None
+
+        normalized = item.strip()
+        if not normalized:
+            return None
+
+        if normalized.startswith("thread:"):
+            return {
+                "source_type": SourceType.THREAD_MESSAGE.value,
+                "label": "Thread Evidence",
+                "source_uri": normalized,
+                "snippet": normalized,
+            }
+
+        label = normalized.rsplit("/", maxsplit=1)[-1] if "/" in normalized else normalized
+        return {
+            "source_type": SourceType.KNOWLEDGE_DOC.value,
+            "label": label,
+            "source_uri": normalized,
+            "snippet": normalized,
+        }
+
+    def _normalize_source_type(self, source_type: object) -> str | None:
+        if not isinstance(source_type, str):
+            return None
+
+        normalized = source_type.strip().lower()
+        source_type_map = {
+            SourceType.THREAD_MESSAGE.value: SourceType.THREAD_MESSAGE.value,
+            "thread": SourceType.THREAD_MESSAGE.value,
+            SourceType.KNOWLEDGE_DOC.value: SourceType.KNOWLEDGE_DOC.value,
+            "doc": SourceType.KNOWLEDGE_DOC.value,
+            "knowledge": SourceType.KNOWLEDGE_DOC.value,
+        }
+        return source_type_map.get(normalized)
 
     def _should_return_insufficient_context(
         self,

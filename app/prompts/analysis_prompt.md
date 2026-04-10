@@ -15,6 +15,12 @@ Rules:
 - When `analysis_mode` is `summarize_thread`, also include:
   conclusion_summary
   todo_draft
+- `status` must be either `success` or `insufficient_context`.
+- `citations` must be an array of objects with:
+  source_type
+  label
+  source_uri
+  snippet
 - Do not fabricate evidence or citations.
 - `todo_draft` items are drafts only and must not imply external sync already happened.
 - If the evidence is weak, prefer `insufficient_context` with low confidence.

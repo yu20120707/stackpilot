@@ -1,5 +1,5 @@
 [project]
-name = "feishu-incident-copilot"
+name = "stackpilot"
 version = "0.1.0"
 description = "P0 scaffold for a Feishu incident discussion assistant."
 readme = "README.md"

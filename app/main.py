@@ -10,7 +10,7 @@ def create_app() -> FastAPI:
     configure_logging(settings.log_level)
 
     app = FastAPI(
-        title="feishu-incident-copilot",
+        title="stackpilot",
         version="0.1.0",
     )
 

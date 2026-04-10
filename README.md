@@ -1,4 +1,4 @@
-# feishu-incident-copilot
+# stackpilot
 
 This workspace now contains the minimum runnable scaffold for P0.
 

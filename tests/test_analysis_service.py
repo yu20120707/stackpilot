@@ -190,3 +190,74 @@ async def test_analysis_service_adds_conclusion_summary_and_todo_draft_for_summa
     assert "closing_summary_requirements" in llm_client.calls[0][1]
     assert "conclusion_summary" in llm_client.calls[0][1]
     assert "todo_draft" in llm_client.calls[0][1]
+
+
+def test_analysis_service_normalizes_common_status_and_citation_shapes(tmp_path: Path) -> None:
+    prompt_path = tmp_path / "analysis_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    service = AnalysisService(FakeLLMClient("{}"), prompt_path=prompt_path)
+
+    summary = service._parse_summary_response(
+        json.dumps(
+            {
+                "status": "mitigation_in_progress",
+                "confidence": "medium",
+                "current_assessment": "Rollback is stabilizing the service.",
+                "known_facts": ["The payment service hit 5xx after release."],
+                "impact_scope": "Payment requests were affected during the incident window.",
+                "next_actions": ["Confirm the final post-rollback trend."],
+                "citations": [
+                    "thread:AlertBot@2026-04-10T01:00:00Z",
+                    "data/knowledge/payment-sop.md",
+                ],
+                "missing_information": ["Detailed error logs"],
+            }
+        )
+    )
+
+    assert summary.status == AnalysisResultStatus.SUCCESS
+    assert summary.citations[0].source_type == SourceType.THREAD_MESSAGE
+    assert summary.citations[1].source_type == SourceType.KNOWLEDGE_DOC
+
+
+def test_analysis_service_normalizes_list_impact_scope_and_short_source_type_aliases(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "analysis_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    service = AnalysisService(FakeLLMClient("{}"), prompt_path=prompt_path)
+
+    summary = service._parse_summary_response(
+        json.dumps(
+            {
+                "status": "success",
+                "confidence": "medium",
+                "current_assessment": "Rollback is stabilizing the service.",
+                "known_facts": ["The payment service hit 5xx after release."],
+                "impact_scope": [
+                    "Checkout failures were reported.",
+                    "Exact volume is still unknown.",
+                ],
+                "next_actions": ["Confirm the final post-rollback trend."],
+                "citations": [
+                    {
+                        "source_type": "thread",
+                        "label": "AlertBot",
+                        "source_uri": "thread://incident/1",
+                        "snippet": "payment service 5xx spike",
+                    },
+                    {
+                        "source_type": "doc",
+                        "label": "Payment Service SOP",
+                        "source_uri": "data/knowledge/payment-sop.md",
+                        "snippet": "confirm release scope and logs",
+                    },
+                ],
+                "missing_information": ["Detailed error logs"],
+            }
+        )
+    )
+
+    assert summary.impact_scope == "Checkout failures were reported. Exact volume is still unknown."
+    assert summary.citations[0].source_type == SourceType.THREAD_MESSAGE
+    assert summary.citations[1].source_type == SourceType.KNOWLEDGE_DOC

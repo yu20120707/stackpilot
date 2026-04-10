@@ -4,9 +4,9 @@
 
 - Date: 2026-04-10
 - Phase: P2-002 complete
-- Overall status: the system now supports richer knowledge retrieval, confirmation-gated task sync drafts, and reviewable postmortem draft generation grounded in thread context and citations
+- Overall status: the system now supports richer knowledge retrieval, confirmation-gated task sync drafts, reviewable postmortem generation, and live `helpcoder.cc` gateway compatibility through SSE fallback in the LLM adapter
 - Recommended next task: `No remaining planned task in task-board.json`
-- Last known good state: runnable P0/P1/P2 scaffold plus postmortem draft generation, source-aware rendering, and full passing regression coverage
+- Last known good state: runnable P0/P1/P2 scaffold plus postmortem draft generation, source-aware rendering, live gateway validation against `helpcoder.cc`, and full passing regression coverage
 
 ## Canonical Files
 
@@ -516,10 +516,44 @@ Required fields:
 - Result:
   - `P2-002` complete
   - The codebase now has a dedicated `PostmortemDraft` contract, a postmortem generation service that uses the LLM when available and falls back to summary-grounded draft synthesis when needed, and a reviewable renderer for post-incident sharing
-  - The project naming was also normalized for publication as `feishu-incident-copilot`
+  - The project naming was also normalized for publication as `stackpilot`
 - Blockers:
   - The live callback route still does not orchestrate the full real Feishu fetch/analyze/reply chain
   - GitHub remote repository creation may still depend on local CLI or a separate repo-creation path outside the current connector set
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 017
+
+- Date: 2026-04-10
+- Primary task: `Post-plan maintenance`
+- Objective: rename the published project to `stackpilot`, verify the provided live LLM gateway, and make the local adapter robust against gateways that only emit usable content in SSE mode
+- Files changed:
+  - `README.md`
+  - `pyproject.toml`
+  - `app/main.py`
+  - `app/clients/llm_client.py`
+  - `app/prompts/analysis_prompt.md`
+  - `app/services/analysis_service.py`
+  - `tests/test_llm_client.py`
+  - `tests/test_analysis_service.py`
+  - `task-board.json`
+  - `progress.md`
+- Checks run:
+  - Raw SSE request against `https://helpcoder.cc/v1/chat/completions` with the provided key returned `pong`
+  - Non-stream request inspection showed `message.content = null`, confirming the need for stream fallback
+  - Live `LLMClient` call returned `pong` after the fallback patch
+  - Live `AnalysisService` call against the real gateway returned a parsed `success` summary after response normalization updates
+  - `uv run pytest tests/test_llm_client.py tests/test_analysis_service.py`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1`
+  - Verified `47` full-suite tests passed after the adapter changes
+- Result:
+  - Published project naming now uses `stackpilot`
+  - The LLM adapter now retries through SSE when a gateway returns an OpenAI-style envelope with empty non-stream `message.content`
+  - Summary parsing now tolerates a small set of schema-adjacent model deviations seen during live integration, including alias statuses, list-form `impact_scope`, and short citation `source_type` aliases
+- Blockers:
+  - The live Feishu callback route still does not orchestrate the full real Feishu fetch/analyze/reply chain
+  - The provided LLM gateway remains schema-loose, so robust normalization is still required locally
 - Next recommended task:
   - `No remaining planned task in task-board.json`
 
