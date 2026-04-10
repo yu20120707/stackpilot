@@ -1,0 +1,21 @@
+{
+  "schema": "2.0",
+  "header": {
+    "event_type": "im.message.receive_v1",
+    "create_time": "1712710800000"
+  },
+  "event": {
+    "sender": {
+      "sender_id": {
+        "open_id": "ou_chat"
+      },
+      "sender_name": "Carol"
+    },
+    "message": {
+      "message_id": "om_chat",
+      "chat_id": "oc_chat",
+      "chat_type": "group",
+      "content": "{\"text\":\"今天谁值班？\"}"
+    }
+  }
+}

@@ -1,0 +1,376 @@
+{
+  "project": "feishu-incident-copilot",
+  "last_updated": "2026-04-10",
+  "status_definitions": {
+    "not_started": "No implementation work has begun.",
+    "in_progress": "Actively being implemented or refined.",
+    "blocked": "Cannot continue due to a real dependency or missing decision.",
+    "done": "Acceptance checks passed and evidence exists in progress.md."
+  },
+  "tasks": [
+    {
+      "id": "DOC-001",
+      "title": "Bootstrap minimum harness governance files",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 0,
+      "depends_on": [],
+      "deliverables": [
+        "agent.md",
+        "task-board.json",
+        "progress.md",
+        "init.ps1"
+      ],
+      "acceptance_checks": [
+        "All governance files exist in the workspace root.",
+        "The task board is machine-readable and dependency-aware.",
+        "A new session can determine the next task from init.ps1."
+      ],
+      "notes": "Initial harness setup completed before implementation."
+    },
+    {
+      "id": "DOC-002",
+      "title": "Align governance files with PRD v0.3",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 1,
+      "depends_on": [
+        "DOC-001"
+      ],
+      "deliverables": [
+        "Updated agent.md",
+        "Updated task-board.json",
+        "Updated progress.md",
+        "Updated init.ps1"
+      ],
+      "acceptance_checks": [
+        "Governance files reference the manual-trigger P0 chain.",
+        "P0 no longer assumes automatic detection or Jira integration.",
+        "The next implementation task is based on the v0.3 PRD."
+      ],
+      "notes": "Completed after the PRD was rewritten as a pure product document."
+    },
+    {
+      "id": "SPEC-001",
+      "title": "Draft P0 technical specification and schemas",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 2,
+      "depends_on": [
+        "DOC-002"
+      ],
+      "deliverables": [
+        "tech-spec.md",
+        "schema.md"
+      ],
+      "acceptance_checks": [
+        "Tech spec defines module layout, environment variables, callback route, and request flow.",
+        "Schema doc defines structured summary, citations, error replies, and analysis contracts.",
+        "P0 remains scoped to manual trigger, one-shot analysis, and thread reply."
+      ],
+      "notes": "Completed to give future coding sessions enough structure to start writing code."
+    },
+    {
+      "id": "SPEC-002",
+      "title": "Draft P0 feature list and test cases",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 3,
+      "depends_on": [
+        "SPEC-001"
+      ],
+      "deliverables": [
+        "feature-list.md",
+        "test-cases.md"
+      ],
+      "acceptance_checks": [
+        "Feature list defines the detailed P0 implementation surface.",
+        "Test cases cover happy path, insufficient-context, and temporary-failure behavior.",
+        "The startup flow requires new sessions to read both documents."
+      ],
+      "notes": "Completed to make future implementation and evaluation less ambiguous."
+    },
+    {
+      "id": "SPEC-003",
+      "title": "Draft P0 API contracts and prompt definitions",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 4,
+      "depends_on": [
+        "SPEC-002"
+      ],
+      "deliverables": [
+        "api-contracts.md",
+        "prompts.md"
+      ],
+      "acceptance_checks": [
+        "API contracts define Feishu and LLM integration boundaries for P0.",
+        "Jira remains explicitly out of scope for active P0 implementation.",
+        "Prompt definitions lock the structured summary and degraded response behavior."
+      ],
+      "notes": "Completed to reduce guessing around external integrations and prompt behavior."
+    },
+    {
+      "id": "DOC-003",
+      "title": "Add evolution governance, session playbook, and decision log",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 5,
+      "depends_on": [
+        "SPEC-003"
+      ],
+      "deliverables": [
+        "evolution-policy.md",
+        "session-playbook.md",
+        "decision-log.md",
+        "Updated agent.md",
+        "Updated init.ps1"
+      ],
+      "acceptance_checks": [
+        "The project has explicit rules for controlled self-improvement.",
+        "The project defines when to start a new thread and how to bootstrap it.",
+        "Confirmed high-value project decisions are recorded in a reusable log."
+      ],
+      "notes": "Completed to keep long-running vibecoding sessions recoverable and disciplined."
+    },
+    {
+      "id": "ARC-001",
+      "title": "Create Python project skeleton and P0 module layout",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 5,
+      "depends_on": [
+        "DOC-003"
+      ],
+      "deliverables": [
+        "Python project scaffold",
+        "FastAPI app entrypoint",
+        "Module folders matching tech-spec.md",
+        "Base configuration loading",
+        "Test skeleton"
+      ],
+      "acceptance_checks": [
+        "The workspace has a runnable FastAPI application skeleton.",
+        "The module layout matches tech-spec.md.",
+        "A new developer can locate callback, thread, knowledge, analysis, and reply modules quickly."
+      ],
+      "notes": "Completed with a uv-managed Python scaffold, FastAPI entrypoint, health route, base settings, and placeholder module boundaries."
+    },
+    {
+      "id": "FEI-001",
+      "title": "Implement Feishu callback endpoint and manual command parsing",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 4,
+      "depends_on": [
+        "ARC-001"
+      ],
+      "deliverables": [
+        "Health check endpoint",
+        "Feishu callback route",
+        "URL verification handling",
+        "Manual trigger command parser"
+      ],
+      "acceptance_checks": [
+        "The app can receive and acknowledge Feishu callback payloads.",
+        "Supported manual commands are recognized from group messages or threads.",
+        "Unsupported or irrelevant messages are ignored safely."
+      ],
+      "notes": "Completed with callback verification handling, normalized message event parsing, safe ignore behavior, and fixture-backed command parsing tests."
+    },
+    {
+      "id": "THR-001",
+      "title": "Implement current-thread context loading and normalization",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 5,
+      "depends_on": [
+        "ARC-001",
+        "FEI-001"
+      ],
+      "deliverables": [
+        "Thread reader service",
+        "Normalized thread message model",
+        "Thread extraction tests or fixtures"
+      ],
+      "acceptance_checks": [
+        "The system can build one normalized analysis request from a triggered thread.",
+        "The normalized thread model matches schema.md.",
+        "Empty or malformed thread content is handled without crashing."
+      ],
+      "notes": "Completed with a thread reader service, adapter-facing thread load contract, fallback-to-trigger behavior, and fixture-backed normalization tests."
+    },
+    {
+      "id": "KB-001",
+      "title": "Implement local knowledge loading and citation lookup",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 6,
+      "depends_on": [
+        "ARC-001"
+      ],
+      "deliverables": [
+        "Knowledge document loader",
+        "Simple retrieval path",
+        "Citation object builder"
+      ],
+      "acceptance_checks": [
+        "Local Markdown or text knowledge documents can be loaded from the configured directory.",
+        "The retrieval path can return citation candidates relevant to a triggered thread.",
+        "Citation objects match schema.md."
+      ],
+      "notes": "Completed with recursive local document loading, graceful file-skip behavior, simple keyword retrieval, and citation object construction."
+    },
+    {
+      "id": "SUM-001",
+      "title": "Implement one-shot structured summary generation",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 7,
+      "depends_on": [
+        "THR-001",
+        "KB-001"
+      ],
+      "deliverables": [
+        "LLM analysis service",
+        "Prompt template",
+        "Structured summary parser or validator",
+        "User-visible insufficient-context path"
+      ],
+      "acceptance_checks": [
+        "One triggered thread can produce a structured summary matching schema.md.",
+        "The result includes citations when evidence exists.",
+        "Insufficient-context cases do not fabricate strong conclusions."
+      ],
+      "notes": "Completed with an OpenAI-compatible LLM adapter, prompt-driven summary generation, schema validation, insufficient-context fallback, and temporary-failure handling."
+    },
+    {
+      "id": "REP-001",
+      "title": "Implement Feishu thread reply rendering",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 8,
+      "depends_on": [
+        "FEI-001",
+        "SUM-001"
+      ],
+      "deliverables": [
+        "Reply renderer",
+        "Feishu reply client",
+        "Success and failure reply templates"
+      ],
+      "acceptance_checks": [
+        "The structured summary can be rendered into a readable Feishu reply.",
+        "The reply is sent back to the original thread or message context.",
+        "Failure replies follow the error response format defined in schema.md."
+      ],
+      "notes": "Completed with success and failure render templates, a Feishu reply send adapter, and transport-backed tests for send success and failure behavior."
+    },
+    {
+      "id": "VAL-001",
+      "title": "Add P0 acceptance fixtures and validation flow",
+      "milestone": "P0",
+      "status": "done",
+      "priority": 9,
+      "depends_on": [
+        "REP-001"
+      ],
+      "deliverables": [
+        "Sample callback fixtures",
+        "Sample thread fixtures",
+        "Manual validation checklist",
+        "Smoke test coverage"
+      ],
+      "acceptance_checks": [
+        "A reviewer can run the P0 happy path against fixtures.",
+        "At least one insufficient-context case is validated.",
+        "P0 readiness can be evaluated without guessing."
+      ],
+      "notes": "Completed with smoke fixtures for happy and insufficient-context flows, a dedicated smoke script, and a concise manual validation checklist."
+    },
+    {
+      "id": "P1-001",
+      "title": "Add same-thread follow-up analysis support",
+      "milestone": "P1",
+      "status": "done",
+      "priority": 10,
+      "depends_on": [
+        "VAL-001"
+      ],
+      "deliverables": [
+        "Follow-up trigger flow",
+        "Updated analysis request contract",
+        "Follow-up response behavior"
+      ],
+      "acceptance_checks": [
+        "Users can ask for a rerun or updated summary in the same thread.",
+        "The product responds in a way that preserves thread continuity.",
+        "The follow-up behavior remains aligned with the PRD."
+      ],
+      "notes": "Completed with follow-up context in the analysis request contract, previous-summary extraction from the same thread, follow-up-aware prompt construction, and updated reply prefixes."
+    },
+    {
+      "id": "P1-002",
+      "title": "Add conclusion summary and todo draft output",
+      "milestone": "P1",
+      "status": "done",
+      "priority": 11,
+      "depends_on": [
+        "P1-001"
+      ],
+      "deliverables": [
+        "Conclusion summary format",
+        "Todo draft format",
+        "User-visible follow-up output"
+      ],
+      "acceptance_checks": [
+        "The product can generate a clearer closing summary for a settled thread.",
+        "Todo drafts are explicit but not automatically synced.",
+        "The output stays structured and source-aware."
+      ],
+      "notes": "Completed with optional closing-summary and todo-draft fields in the structured summary contract, summarize-thread-specific prompt requirements, rendered draft output, and regression coverage."
+    },
+    {
+      "id": "P2-001",
+      "title": "Add external task sync and richer knowledge sources",
+      "milestone": "P2",
+      "status": "done",
+      "priority": 12,
+      "depends_on": [
+        "P1-002"
+      ],
+      "deliverables": [
+        "External task sync contract",
+        "Additional knowledge connectors",
+        "Expanded product validation"
+      ],
+      "acceptance_checks": [
+        "Users can choose to sync external tasks from a prepared draft.",
+        "Additional knowledge sources improve available evidence without breaking P0 behavior.",
+        "The product remains manually controlled for high-risk actions."
+      ],
+      "notes": "Completed with a confirmation-gated external task sync contract and service, a generic task sync client boundary, structured .knowledge.json bundle support for richer citations, and fixture-backed validation."
+    },
+    {
+      "id": "P2-002",
+      "title": "Add postmortem draft generation",
+      "milestone": "P2",
+      "status": "done",
+      "priority": 13,
+      "depends_on": [
+        "P1-002"
+      ],
+      "deliverables": [
+        "Postmortem draft output",
+        "Reviewable source-aware summary",
+        "Post-incident workflow validation"
+      ],
+      "acceptance_checks": [
+        "A concluded discussion can generate a reusable postmortem draft.",
+        "The draft remains grounded in cited discussion and knowledge sources.",
+        "The feature does not weaken the simpler P0/P1 product flow."
+      ],
+      "notes": "Completed with a dedicated postmortem draft contract, an LLM-backed service with summary-grounded fallback generation, a reviewable renderer, and fixture-backed tests."
+    }
+  ]
+}

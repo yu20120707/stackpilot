@@ -1,0 +1,19 @@
+{
+  "source_name": "release-notes",
+  "documents": [
+    {
+      "doc_id": "payment-release-2026-04-10",
+      "title": "Payment Release 2026-04-10",
+      "content": "The payment-api release on 2026-04-10 touched retry middleware and idempotency handling. Rollback guidance: if payment 5xx rises immediately after release, confirm rollback and compare retry middleware changes.",
+      "source_uri": "https://kb.example.local/releases/payment-2026-04-10",
+      "tags": ["payment", "release", "rollback"]
+    },
+    {
+      "doc_id": "incident-template",
+      "title": "Incident Task Sync Checklist",
+      "content": "Before syncing incident follow-up tasks, confirm owner, rationale, and source citations. External task creation must stay behind explicit confirmation.",
+      "source_uri": "https://kb.example.local/runbooks/incident-task-sync",
+      "tags": ["incident", "task-sync"]
+    }
+  ]
+}

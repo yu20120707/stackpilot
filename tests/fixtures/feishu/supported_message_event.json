@@ -1,0 +1,27 @@
+{
+  "schema": "2.0",
+  "header": {
+    "event_type": "im.message.receive_v1",
+    "create_time": "1712710800000"
+  },
+  "event": {
+    "sender": {
+      "sender_id": {
+        "open_id": "ou_xxx"
+      },
+      "sender_name": "Alice"
+    },
+    "message": {
+      "message_id": "om_xxx",
+      "chat_id": "oc_xxx",
+      "chat_type": "group",
+      "thread_id": "omt_xxx",
+      "content": "{\"text\":\"@机器人 分析一下这次故障\"}",
+      "mentions": [
+        {
+          "name": "机器人"
+        }
+      ]
+    }
+  }
+}

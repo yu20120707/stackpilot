@@ -1,0 +1,32 @@
+{
+  "status": "draft",
+  "title": "Payment release regression after retry middleware change",
+  "incident_summary": "The discussion converged on a payment-api release regression that improved after rollback.",
+  "impact_summary": "Payment-related requests were affected during the incident window until rollback reduced the error rate.",
+  "timeline": [
+    {
+      "timestamp_hint": "2026-04-10T01:00:00+08:00",
+      "event": "Alerting reported a payment service 5xx spike after release."
+    },
+    {
+      "timestamp_hint": "2026-04-10T01:05:00+08:00",
+      "event": "The team rolled back the payment-api release."
+    },
+    {
+      "timestamp_hint": "2026-04-10T01:12:00+08:00",
+      "event": "The thread reported that the error rate was dropping after rollback."
+    }
+  ],
+  "root_cause_hypothesis": "The strongest current hypothesis is that the release changed retry middleware behavior and triggered the payment-service error spike.",
+  "resolution_summary": "Rollback stabilized the service, but the exact trigger still needs log-backed confirmation.",
+  "follow_up_actions": [
+    "Confirm the final post-rollback error-rate trend.",
+    "Collect release diff and error-log evidence.",
+    "Prepare an external follow-up task after owner confirmation."
+  ],
+  "open_questions": [
+    "Which retry middleware change directly correlates with the spike?",
+    "What was the exact user-impact window?"
+  ],
+  "citations": []
+}

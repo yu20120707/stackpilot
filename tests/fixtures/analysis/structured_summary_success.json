@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "confidence": "medium",
+  "current_assessment": "当前更像是一次发布后导致的支付服务异常，回滚后错误率正在下降。",
+  "known_facts": [
+    "支付服务出现 5xx 告警",
+    "线程中提到已经执行回滚",
+    "错误率有下降迹象"
+  ],
+  "impact_scope": "当前主要影响支付相关请求，具体用户范围仍待确认。",
+  "next_actions": [
+    "补充错误日志",
+    "确认最近一次发布内容",
+    "持续观察回滚后的错误率变化"
+  ],
+  "citations": [],
+  "missing_information": [
+    "详细错误日志"
+  ]
+}

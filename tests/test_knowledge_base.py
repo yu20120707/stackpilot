@@ -1,0 +1,114 @@
+from datetime import datetime, timezone
+from pathlib import Path
+
+from app.models.contracts import AnalysisRequest, ThreadMessage, TriggerCommand
+from app.services.knowledge_base import KnowledgeBase
+
+
+def build_analysis_request(*messages: str) -> AnalysisRequest:
+    thread_messages = [
+        ThreadMessage(
+            message_id=f"om_{index}",
+            sender_name="Alice",
+            sent_at=datetime.now(timezone.utc),
+            text=text,
+        )
+        for index, text in enumerate(messages, start=1)
+    ]
+    return AnalysisRequest(
+        trigger_command=TriggerCommand.ANALYZE_INCIDENT,
+        chat_id="oc_xxx",
+        thread_id="omt_xxx",
+        trigger_message_id="om_trigger",
+        user_id="ou_xxx",
+        user_display_name="Alice",
+        thread_messages=thread_messages,
+    )
+
+
+def test_knowledge_base_lists_markdown_and_text_documents_recursively(tmp_path: Path) -> None:
+    docs_dir = tmp_path / "knowledge"
+    nested_dir = docs_dir / "runbooks"
+    nested_dir.mkdir(parents=True)
+
+    (docs_dir / "payment.md").write_text("# Payment\npayment issue notes", encoding="utf-8")
+    (nested_dir / "auth.txt").write_text("auth issue notes", encoding="utf-8")
+    (docs_dir / "release.knowledge.json").write_text(
+        '{"documents":[{"doc_id":"release-1","title":"Release","content":"payment release notes"}]}',
+        encoding="utf-8",
+    )
+    (docs_dir / "ignore.json").write_text("{}", encoding="utf-8")
+
+    knowledge_base = KnowledgeBase(docs_dir)
+
+    documents = knowledge_base.list_documents()
+
+    assert [path.name for path in documents] == ["payment.md", "release.knowledge.json", "auth.txt"]
+
+
+def test_knowledge_base_retrieves_relevant_citations() -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_base = KnowledgeBase(fixtures_dir, max_hits=2)
+    request = build_analysis_request(
+        "payment service 5xx spike after deploy",
+        "please confirm release and inspect logs",
+    )
+
+    citations = knowledge_base.retrieve_citations(request)
+
+    assert len(citations) >= 1
+    assert any(citation.source_type == "knowledge_doc" for citation in citations)
+    assert any(citation.label == "Payment Service SOP" for citation in citations)
+    assert any("payment-sop.md" in citation.source_uri for citation in citations)
+    assert any("5xx spike" in citation.snippet.lower() for citation in citations)
+
+
+def test_knowledge_base_returns_empty_when_directory_is_missing(tmp_path: Path) -> None:
+    knowledge_base = KnowledgeBase(tmp_path / "missing")
+    request = build_analysis_request("payment service is failing")
+
+    assert knowledge_base.list_documents() == []
+    assert knowledge_base.list_metadata() == []
+    assert knowledge_base.retrieve_citations(request) == []
+
+
+def test_knowledge_base_loads_structured_bundle_documents_and_retrieves_them() -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_base = KnowledgeBase(fixtures_dir, max_hits=3)
+    request = build_analysis_request(
+        "please confirm the payment release and rollback notes",
+        "the thread suggests the deployment touched retry middleware",
+    )
+
+    metadata = knowledge_base.list_metadata()
+    citations = knowledge_base.retrieve_citations(request)
+
+    assert any(item.doc_id == "payment-release-2026-04-10" for item in metadata)
+    assert any(citation.label == "Payment Release 2026-04-10" for citation in citations)
+    assert any("payment-2026-04-10" in citation.source_uri for citation in citations)
+    assert any("retry middleware" in citation.snippet.lower() for citation in citations)
+
+
+def test_knowledge_base_skips_unreadable_files(monkeypatch, tmp_path: Path) -> None:
+    docs_dir = tmp_path / "knowledge"
+    docs_dir.mkdir()
+    readable = docs_dir / "payment.md"
+    broken = docs_dir / "broken.md"
+
+    readable.write_text("# Payment\npayment deployment rollback guide", encoding="utf-8")
+    broken.write_text("broken content", encoding="utf-8")
+
+    original_read_text = Path.read_text
+
+    def fake_read_text(self: Path, *args, **kwargs) -> str:
+        if self == broken:
+            raise OSError("cannot read")
+        return original_read_text(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", fake_read_text)
+
+    knowledge_base = KnowledgeBase(docs_dir)
+    metadata = knowledge_base.list_metadata()
+
+    assert len(metadata) == 1
+    assert metadata[0].doc_id == "payment"

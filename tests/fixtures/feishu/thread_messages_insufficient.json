@@ -1,0 +1,10 @@
+{
+  "thread_messages": [
+    {
+      "message_id": "om_weak_1",
+      "sender_name": "Alice",
+      "sent_at": "2026-04-10T01:00:00+08:00",
+      "text": "服务异常了，帮忙看看"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "thread_messages": [
+    {
+      "message_id": "om_1",
+      "sender_name": "AlertBot",
+      "sent_at": "2026-04-10T01:00:00+08:00",
+      "text": "payment service 5xx spike"
+    },
+    {
+      "message_id": "om_2",
+      "sender_name": "",
+      "sent_at": "2026-04-10T01:01:00+08:00",
+      "text": "   "
+    },
+    {
+      "message_id": "om_3",
+      "sender_name": "",
+      "sent_at": "2026-04-10T01:02:00+08:00",
+      "text": "we rolled back payment-api and error rate is dropping"
+    }
+  ]
+}

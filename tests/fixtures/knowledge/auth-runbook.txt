@@ -1,0 +1,1 @@
+Authentication login failures should be checked against IdP status, token expiry, and recent secret rotation.
