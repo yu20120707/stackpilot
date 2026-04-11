@@ -85,6 +85,27 @@ def test_feishu_callback_accepts_manual_code_review_trigger() -> None:
     assert body["data"]["trigger_command"] == "review_code"
 
 
+def test_feishu_callback_accepts_review_feedback_trigger() -> None:
+    class FakeWorkflowRouter:
+        async def process_trigger(self, *, trigger_command, trigger_event) -> None:
+            _ = (trigger_command, trigger_event)
+
+    app.state.services.workflow_router = FakeWorkflowRouter()
+    client = TestClient(app)
+    payload = load_fixture("supported_message_event.json")
+    payload["event"]["message"]["content"] = json.dumps(
+        {"text": "@stackpilot 采纳建议 F1"},
+        ensure_ascii=False,
+    )
+
+    response = client.post("/api/feishu/events", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["status"] == "accepted"
+    assert body["data"]["trigger_command"] == "review_feedback"
+
+
 def test_feishu_callback_ignores_unsupported_group_chatter() -> None:
     client = TestClient(app)
 

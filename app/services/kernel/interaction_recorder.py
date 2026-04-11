@@ -83,6 +83,14 @@ class InteractionRecorder:
         if record.event_type.value == "analysis_reply_sent":
             status = record.summary_status.value if record.summary_status is not None else "unknown"
             return f"analysis_reply_sent:{status}"
+        if record.event_type.value == "review_draft_sent":
+            return f"review_draft_sent:{record.payload.get('finding_count', 0)}"
+        if record.event_type.value == "review_feedback_recorded":
+            return (
+                "review_feedback_recorded:"
+                f"{record.payload.get('finding_id', 'finding')}:"
+                f"{record.payload.get('feedback_status', 'unknown')}"
+            )
         if record.event_type.value == "actions_proposed":
             return f"actions_proposed:{record.payload.get('action_count', 0)}"
         if record.event_type.value == "action_executed":

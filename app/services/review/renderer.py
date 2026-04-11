@@ -9,6 +9,12 @@ RISK_LABELS = {
     "high": "高",
 }
 
+FOCUS_LABELS = {
+    "bug_risk": "缺陷风险",
+    "test_gap": "测试缺口",
+    "security": "安全",
+}
+
 
 class ReviewRenderer:
     def render(self, reply: ReviewReplyPayload) -> str:
@@ -35,6 +41,11 @@ class ReviewRenderer:
             "",
             f"- Overall assessment: {review_draft.overall_assessment}",
             f"- Overall risk: {review_draft.overall_risk.value}",
+            (
+                f"- Focus areas: {', '.join(item.value for item in review_draft.focus_areas)}"
+                if review_draft.focus_areas
+                else "- Focus areas: bug_risk, test_gap"
+            ),
             "",
             "### Findings",
         ]
@@ -49,7 +60,8 @@ class ReviewRenderer:
                     if finding.file_path
                     else ""
                 )
-                lines.append(f"- [{finding.severity.value}] {finding.title}{location}")
+                finding_label = finding.finding_id or "finding"
+                lines.append(f"- [{finding.severity.value}] {finding_label} {finding.title}{location}")
                 lines.append(f"  {finding.summary}")
         if review_draft.missing_context:
             lines.extend(["", "### Missing context"])
@@ -66,6 +78,11 @@ class ReviewRenderer:
             "整体风险：",
             risk_label,
             "",
+            "审查重点：",
+            "、".join(FOCUS_LABELS.get(item.value, item.value) for item in review_draft.focus_areas)
+            if review_draft.focus_areas
+            else "缺陷风险、测试缺口",
+            "",
             "Findings：",
         ]
         if not review_draft.findings:
@@ -73,8 +90,14 @@ class ReviewRenderer:
         else:
             for finding in review_draft.findings:
                 location = self._render_location(finding.file_path, finding.line_start, finding.line_end)
-                lines.append(f"- [{RISK_LABELS.get(finding.severity.value, finding.severity.value)}] {finding.title}{location}")
+                finding_label = finding.finding_id or "finding"
+                lines.append(
+                    f"- [{finding_label}] [{RISK_LABELS.get(finding.severity.value, finding.severity.value)}] {finding.title}{location}"
+                )
                 lines.append(f"  {finding.summary}")
+                if finding.feedback_status is not None:
+                    feedback_text = "已采纳" if finding.feedback_status.value == "accepted" else "已忽略"
+                    lines.append(f"  状态：{feedback_text}")
                 for evidence in finding.evidence[:2]:
                     lines.append(f"  证据：{evidence.label} ({evidence.source_uri})")
                     lines.append(f"  {evidence.snippet}")

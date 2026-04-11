@@ -438,7 +438,7 @@ Field rules:
 
 - `event_id`: required unique event id
 - `correlation_key`: required dedupe key for repeated deliveries
-- `event_type`: required enum: `analysis_reply_sent`, `review_draft_sent`, `actions_proposed`, `action_executed`, `reply_send_failed`
+- `event_type`: required enum: `analysis_reply_sent`, `review_draft_sent`, `review_feedback_recorded`, `actions_proposed`, `action_executed`, `reply_send_failed`
 - `tenant_id`: required tenant/chat id
 - `thread_id`: required thread id
 - `actor_id`: required actor id
@@ -573,6 +573,9 @@ Field rules:
 - `files`: required normalized file list, may be empty only when the review degrades to insufficient-context
 - `overall_risk`: required enum: `low`, `medium`, `high`
 - `findings`: required array; an empty array is valid when no high-confidence issue is visible
+- `finding_id`: runtime-assigned stable id such as `F1`, used for explicit feedback commands in the same thread
+- `focus_areas`: request-resolved focus labels such as `bug_risk`, `test_gap`, or `security`
+- `feedback_status`: optional enum: `accepted`, `ignored`, only present after an explicit user feedback command
 - `evidence`: optional per-finding evidence refs, but runtime should try to attach diff-hunk evidence whenever a file-scoped finding exists
 - GitHub publication remains approval-gated and is stored as a pending `review_publish` action in the shared action queue
 

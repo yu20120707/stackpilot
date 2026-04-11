@@ -15,6 +15,8 @@ The current implemented baseline already covers:
 - append-only evidence recording and draft skill candidates
 - AI code review from inline diff or GitHub PR input
 - approval-backed GitHub draft review publishing
+- review focus routing with user preference memory
+- explicit finding adoption signals and review-focus draft skill candidates
 
 The next product direction is no longer just "summarize one thread". It is:
 

@@ -6,6 +6,7 @@ from app.models.contracts import (
     InteractionEventType,
     InteractionRecord,
     PendingActionType,
+    ReviewFeedbackStatus,
     SkillCandidate,
     SkillCandidateStatus,
 )
@@ -27,7 +28,18 @@ class SkillMiner:
         records = self.interaction_recorder.list_tenant_records(tenant_id)
         created_candidates: list[SkillCandidate] = []
 
-        for pattern_key, action_type in self._iter_supported_patterns(records):
+        created_candidates.extend(self._create_incident_candidates(tenant_id, records))
+        created_candidates.extend(self._create_review_candidates(tenant_id, records))
+
+        return created_candidates
+
+    def _create_incident_candidates(
+        self,
+        tenant_id: str,
+        records: list[InteractionRecord],
+    ) -> list[SkillCandidate]:
+        created_candidates: list[SkillCandidate] = []
+        for pattern_key, action_type in self._iter_incident_patterns(records):
             if self.skill_registry.find_by_pattern(tenant_id, pattern_key) is not None:
                 continue
 
@@ -57,10 +69,61 @@ class SkillMiner:
                 updated_at=datetime.now(timezone.utc),
             )
             created_candidates.append(self.skill_registry.create_draft_candidate(candidate))
-
         return created_candidates
 
-    def _iter_supported_patterns(
+    def _create_review_candidates(
+        self,
+        tenant_id: str,
+        records: list[InteractionRecord],
+    ) -> list[SkillCandidate]:
+        created_candidates: list[SkillCandidate] = []
+        for pattern_key in self._iter_review_patterns(records):
+            if self.skill_registry.find_by_pattern(tenant_id, pattern_key) is not None:
+                continue
+
+            matching_records = [
+                record
+                for record in records
+                if record.event_type is InteractionEventType.REVIEW_FEEDBACK_RECORDED
+                and record.pattern_key == pattern_key
+                and record.payload.get("feedback_status") == ReviewFeedbackStatus.ACCEPTED.value
+            ]
+            if len(matching_records) < 2:
+                continue
+
+            focus_area = pattern_key.split("/")[2]
+            candidate = SkillCandidate(
+                candidate_id=f"skill-review-{focus_area}-focus",
+                tenant_id=tenant_id,
+                name=f"review-{focus_area}-focus-loop",
+                workflow="review",
+                status=SkillCandidateStatus.DRAFT,
+                source_pattern_key=pattern_key,
+                trigger_conditions=[
+                    "A code review run produced structured findings with explicit focus areas.",
+                    f"Users repeatedly accepted findings tagged with the {focus_area} focus area.",
+                ],
+                steps=[
+                    "Resolve review focus from explicit request or stored preferences.",
+                    "Generate structured findings with evidence-backed reasoning.",
+                    "Let users explicitly mark findings as accepted or ignored from the same Feishu thread.",
+                ],
+                verification_steps=[
+                    "At least two accepted findings share the same focus area.",
+                    "The accepted findings remain traceable in the review memory and interaction log.",
+                ],
+                failure_signals=[
+                    "Repeated ignored findings for the same focus area.",
+                    "Reply send failure while recording review feedback.",
+                ],
+                evidence_event_ids=[record.event_id for record in matching_records[-2:]],
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+            created_candidates.append(self.skill_registry.create_draft_candidate(candidate))
+        return created_candidates
+
+    def _iter_incident_patterns(
         self,
         records: list[InteractionRecord],
     ) -> list[tuple[str, PendingActionType]]:
@@ -74,6 +137,20 @@ class SkillMiner:
                 continue
             patterns[record.pattern_key] = record.action_type
         return sorted(patterns.items())
+
+    def _iter_review_patterns(
+        self,
+        records: list[InteractionRecord],
+    ) -> list[str]:
+        patterns: set[str] = set()
+        for record in records:
+            if (
+                record.event_type is not InteractionEventType.REVIEW_FEEDBACK_RECORDED
+                or record.pattern_key is None
+            ):
+                continue
+            patterns.add(record.pattern_key)
+        return sorted(patterns)
 
     def _candidate_id_for(self, action_type: PendingActionType) -> str:
         if action_type is PendingActionType.TASK_SYNC:

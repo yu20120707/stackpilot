@@ -8,6 +8,7 @@ from app.models.contracts import (
     AnalysisResultRecord,
     AnalysisResultStatus,
     CodeReviewDraft,
+    ReviewMemoryState,
     CodeReviewRequest,
     ConfidenceLevel,
     DiffFileChange,
@@ -19,6 +20,8 @@ from app.models.contracts import (
     PostmortemStatus,
     PostmortemTimelineEntry,
     ReviewRiskLevel,
+    ReviewFeedbackStatus,
+    ReviewFocusArea,
     ReviewSourceType,
     StructuredSummary,
     TodoDraftItem,
@@ -187,6 +190,7 @@ def test_code_review_draft_accepts_structured_findings() -> None:
         status="success",
         overall_assessment="One input-validation path still looks unsafe.",
         overall_risk=ReviewRiskLevel.MEDIUM,
+        focus_areas=[ReviewFocusArea.BUG_RISK],
         findings=[],
         missing_context=["No related tests in the diff."],
         publish_recommendation="Keep as draft before publishing.",
@@ -194,3 +198,28 @@ def test_code_review_draft_accepts_structured_findings() -> None:
 
     assert draft.status.value == "success"
     assert draft.overall_risk is ReviewRiskLevel.MEDIUM
+
+
+def test_review_memory_state_accepts_feedback_ready_findings() -> None:
+    state = ReviewMemoryState(
+        source_type=ReviewSourceType.GITHUB_PR,
+        source_ref="https://github.com/openai/demo/pull/12",
+        last_review_message_id="om_review_reply",
+        last_review_status="success",
+        focus_areas=[ReviewFocusArea.SECURITY],
+        findings=[
+            {
+                "finding_id": "F1",
+                "title": "Missing auth check",
+                "severity": "high",
+                "summary": "The new route bypasses the existing auth guard.",
+                "file_path": "app/api/routes.py",
+                "focus_areas": ["security"],
+                "feedback_status": ReviewFeedbackStatus.ACCEPTED,
+                "evidence": [],
+            }
+        ],
+        updated_at=datetime.now(timezone.utc),
+    )
+
+    assert state.findings[0].feedback_status is ReviewFeedbackStatus.ACCEPTED

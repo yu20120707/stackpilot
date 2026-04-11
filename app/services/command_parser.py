@@ -57,6 +57,10 @@ APPROVE_ACTION_PATTERN = re.compile(
     r"^(?:确认|批准|执行)(?:执行)?动作\s+([a-z0-9_-]+)$",
     re.IGNORECASE,
 )
+REVIEW_FEEDBACK_PATTERN = re.compile(
+    r"^(?:(采纳|接受|忽略|驳回))(?:审查|建议|finding)?\s+([a-z0-9_-]+)$",
+    re.IGNORECASE,
+)
 
 
 def parse_trigger_command(message_text: str) -> TriggerCommand | None:
@@ -67,6 +71,9 @@ def parse_trigger_command(message_text: str) -> TriggerCommand | None:
 
     if extract_approved_action_id(normalized_text) is not None:
         return TriggerCommand.APPROVE_ACTION
+
+    if extract_review_feedback(normalized_text) is not None:
+        return TriggerCommand.REVIEW_FEEDBACK
 
     if _is_code_review_trigger(
         original_text=message_text,
@@ -102,6 +109,19 @@ def extract_approved_action_id(message_text: str) -> str | None:
     if match is None:
         return None
     return match.group(1).upper()
+
+
+def extract_review_feedback(message_text: str) -> tuple[str, str] | None:
+    normalized = normalize_message_text(message_text)
+    match = REVIEW_FEEDBACK_PATTERN.fullmatch(normalized)
+    if match is None:
+        return None
+
+    verb = match.group(1).lower()
+    finding_id = match.group(2).upper()
+    if verb in {"采纳", "接受"}:
+        return ("accepted", finding_id)
+    return ("ignored", finding_id)
 
 
 def is_follow_up_trigger(trigger_command: TriggerCommand) -> bool:

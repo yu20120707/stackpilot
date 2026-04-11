@@ -179,3 +179,21 @@ Copy this format for new confirmed decisions.
   - `progress.md`
 - Revisit when:
   - a third workflow appears and the current router shape is no longer the cleanest separation boundary
+
+### DEC-010
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: review preference memory and review skill mining may only learn from explicit user requests or explicit finding-feedback commands; they must not infer adoption from silence or automatically promote findings into active review rules.
+- Why: review output is easy to overfit if the system treats missing response as approval, so the safe baseline is to require explicit focus requests or explicit `accepted/ignored` feedback before reusing patterns.
+- Alternatives considered:
+  - infer preference from every generated review without user confirmation
+  - infer adoption from GitHub comment existence alone
+- Impacted files:
+  - `app/services/review/preference_service.py`
+  - `app/services/review/flow.py`
+  - `app/services/skill_miner.py`
+  - `feature-list.md`
+  - `progress.md`
+- Revisit when:
+  - GitHub-side resolution or code-change outcome signals are integrated strongly enough to support more reliable adoption measurement

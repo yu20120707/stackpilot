@@ -28,6 +28,13 @@ class WorkflowRouter:
             )
             return
 
+        if trigger_command is TriggerCommand.REVIEW_FEEDBACK:
+            handled = await self.code_review_flow.process_feedback(
+                trigger_event=trigger_event,
+            )
+            if handled:
+                return
+
         if trigger_command is TriggerCommand.APPROVE_ACTION:
             handled = await self.code_review_flow.process_approval(
                 trigger_event=trigger_event,

@@ -2,6 +2,7 @@ from app.models.contracts import TriggerCommand
 from app.services.command_parser import (
     SUPPORTED_TRIGGER_PHRASES,
     extract_approved_action_id,
+    extract_review_feedback,
     normalize_message_text,
     parse_trigger_command,
 )
@@ -33,6 +34,13 @@ def test_command_parser_matches_action_approval_commands() -> None:
     assert parse_trigger_command("批准动作 A1") is TriggerCommand.APPROVE_ACTION
     assert parse_trigger_command("@stackpilot 确认动作 a2") is TriggerCommand.APPROVE_ACTION
     assert extract_approved_action_id("执行动作 a3") == "A3"
+
+
+def test_command_parser_matches_review_feedback_commands() -> None:
+    assert parse_trigger_command("采纳建议 F1") is TriggerCommand.REVIEW_FEEDBACK
+    assert parse_trigger_command("@stackpilot 忽略finding f2") is TriggerCommand.REVIEW_FEEDBACK
+    assert extract_review_feedback("接受审查 F3") == ("accepted", "F3")
+    assert extract_review_feedback("驳回建议 f4") == ("ignored", "F4")
 
 
 def test_command_parser_matches_manual_code_review_triggers() -> None:

@@ -509,7 +509,7 @@
       "id": "CR-002",
       "title": "Grow review reuse safely with policy routing and adoption signals",
       "milestone": "M6",
-      "status": "not_started",
+      "status": "done",
       "priority": 20,
       "depends_on": [
         "CR-001"
@@ -525,7 +525,29 @@
         "The system records whether review findings were published, accepted, or ignored.",
         "Review-specific reusable patterns still remain candidate-first and approval-gated."
       ],
-      "notes": "The next review milestone should reuse the shared growth kernel to learn stable team preferences and accepted review patterns without enabling autonomous code fixes."
+      "notes": "Completed with explicit review-focus routing, repeated-request preference memory, review-state persistence, explicit finding feedback commands, and review-focus draft skill candidates mined from accepted findings."
+    },
+    {
+      "id": "MEM-002",
+      "title": "Expand org memory and team-style shaping across incident and review workflows",
+      "milestone": "M7",
+      "status": "not_started",
+      "priority": 21,
+      "depends_on": [
+        "CR-002"
+      ],
+      "deliverables": [
+        "Org-level review defaults",
+        "Team-style postmortem shaping",
+        "Cross-workflow convention store",
+        "Org-memory regression tests"
+      ],
+      "acceptance_checks": [
+        "Org-level conventions can shape review focus defaults without overriding explicit user requests.",
+        "Approved team conventions can shape postmortem and review output structure.",
+        "The new memory layer remains tenant-scoped, auditable, and does not silently rewrite canonical docs."
+      ],
+      "notes": "This next milestone should make org memory actually influence output shape and review defaults while keeping explicit user commands higher priority than stored conventions."
     }
   ]
 }

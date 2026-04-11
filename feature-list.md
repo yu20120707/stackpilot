@@ -142,6 +142,7 @@ Constraint:
 This is the second workflow built on the shared kernel.
 
 The `M5` MVP is now implemented for explicit Feishu-triggered review requests using inline patch or GitHub PR input, structured draft findings, safe degraded replies, and approval-backed GitHub draft publishing.
+The first `M6` safe-reuse slice is also implemented: explicit review focus routing, repeated-request preference memory, explicit finding feedback recording, and draft review-focus skill candidates.
 
 | ID | Feature | Priority | Summary |
 | --- | --- | --- | --- |

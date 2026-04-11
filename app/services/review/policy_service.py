@@ -1,19 +1,15 @@
 from __future__ import annotations
 
-from app.models.contracts import CodeReviewRequest, KnowledgeCitation, SourceType
+from app.models.contracts import CodeReviewRequest, KnowledgeCitation, ReviewFocusArea, SourceType
 from app.services.knowledge_base import KnowledgeBase
 
 
-POLICY_KEYWORDS = (
-    "review",
-    "policy",
-    "代码审查",
-    "code review",
-    "测试",
-    "test",
-    "security",
-    "safe",
-)
+BASE_POLICY_KEYWORDS = ("review", "policy", "代码审查", "code review")
+FOCUS_KEYWORDS: dict[ReviewFocusArea, tuple[str, ...]] = {
+    ReviewFocusArea.BUG_RISK: ("bug", "risk", "regression", "回归", "异常", "defect"),
+    ReviewFocusArea.TEST_GAP: ("test", "coverage", "测试", "单测", "integration"),
+    ReviewFocusArea.SECURITY: ("security", "secure", "auth", "安全", "权限", "注入"),
+}
 
 
 class ReviewPolicyService:
@@ -39,7 +35,9 @@ class ReviewPolicyService:
                     document.content[:500].lower(),
                 ]
             )
-            score = sum(3 for keyword in POLICY_KEYWORDS if keyword in haystack)
+            score = sum(2 for keyword in BASE_POLICY_KEYWORDS if keyword in haystack)
+            for focus_area in request.focus_areas:
+                score += sum(3 for keyword in FOCUS_KEYWORDS.get(focus_area, ()) if keyword in haystack)
             score += sum(1 for term in request_terms if term and term in haystack)
             if score <= 0:
                 continue

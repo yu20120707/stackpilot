@@ -10,14 +10,17 @@ from app.models.contracts import (
     FeishuReplySendResult,
     InteractionEventType,
     NormalizedFeishuMessageEvent,
+    ReviewFeedbackStatus,
     TriggerCommand,
 )
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.interaction_recorder import InteractionRecorder
+from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
 from app.services.review.diff_reader import DiffReader
 from app.services.review.flow import CodeReviewFlow
+from app.services.review.preference_service import ReviewPreferenceService
 from app.services.review.policy_service import ReviewPolicyService
 from app.services.review.publish_service import ReviewPublishService
 from app.services.review.renderer import ReviewRenderer
@@ -120,7 +123,7 @@ def build_review_flow(
     github_patch: str | None = None,
     publish_url: str | None = None,
     reply_success: bool = True,
-) -> tuple[CodeReviewFlow, FakeReviewFeishuClient, FakeGitHubReviewClient, ActionQueueService, InteractionRecorder]:
+) -> tuple[CodeReviewFlow, FakeReviewFeishuClient, FakeGitHubReviewClient, ActionQueueService, InteractionRecorder, MemoryService]:
     feishu_client = FakeReviewFeishuClient(reply_success=reply_success)
     llm_client = FakeLLMClient(llm_response)
     github_client = FakeGitHubReviewClient(
@@ -129,12 +132,14 @@ def build_review_flow(
     )
     interaction_recorder, skill_miner = build_growth_services(tmp_path)
     action_queue_service = ActionQueueService(tmp_path / "actions")
+    memory_service = MemoryService(tmp_path / "memory")
     review_renderer = ReviewRenderer()
     review_flow = CodeReviewFlow(
         feishu_client=feishu_client,
         github_review_client=github_client,
         diff_reader=DiffReader(),
         review_policy_service=ReviewPolicyService(KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3)),
+        review_preference_service=ReviewPreferenceService(memory_service),
         review_service=ReviewService(llm_client),
         review_renderer=review_renderer,
         review_publish_service=ReviewPublishService(
@@ -142,10 +147,11 @@ def build_review_flow(
             github_review_client=github_client,
             review_renderer=review_renderer,
         ),
+        memory_service=memory_service,
         interaction_recorder=interaction_recorder,
         skill_miner=skill_miner,
     )
-    return review_flow, feishu_client, github_client, action_queue_service, interaction_recorder
+    return review_flow, feishu_client, github_client, action_queue_service, interaction_recorder, memory_service
 
 
 INLINE_PATCH_MESSAGE = """@stackpilot 审一下这个 diff
@@ -165,7 +171,7 @@ index 0000000..1111111 100644
 
 @pytest.mark.anyio
 async def test_code_review_flow_reviews_inline_patch_and_records_draft(tmp_path: Path) -> None:
-    review_flow, feishu_client, _, _, interaction_recorder = build_review_flow(
+    review_flow, feishu_client, _, _, interaction_recorder, memory_service = build_review_flow(
         tmp_path=tmp_path,
         llm_response=load_text("analysis", "code_review_success.json"),
     )
@@ -182,13 +188,16 @@ async def test_code_review_flow_reviews_inline_patch_and_records_draft(tmp_path:
     scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review")
     records = interaction_recorder.list_thread_records(scope)
     assert [record.event_type for record in records] == [InteractionEventType.REVIEW_DRAFT_SENT]
+    review_state = memory_service.load_review_state(memory_service.resolve_scope(build_trigger_event(INLINE_PATCH_MESSAGE)))
+    assert review_state is not None
+    assert review_state.findings[0].finding_id == "F1"
 
 
 @pytest.mark.anyio
 async def test_code_review_flow_fetches_github_pr_and_prepares_publish_action(tmp_path: Path) -> None:
     patch_text = load_text("analysis", "code_review_success.json")
     _ = patch_text
-    review_flow, feishu_client, github_client, action_queue_service, _ = build_review_flow(
+    review_flow, feishu_client, github_client, action_queue_service, _, _ = build_review_flow(
         tmp_path=tmp_path,
         llm_response=load_text("analysis", "code_review_success.json"),
         github_patch=INLINE_PATCH_MESSAGE.split("```diff", maxsplit=1)[1].split("```", maxsplit=1)[0].strip(),
@@ -208,7 +217,7 @@ async def test_code_review_flow_fetches_github_pr_and_prepares_publish_action(tm
 
 @pytest.mark.anyio
 async def test_code_review_flow_executes_publish_approval(tmp_path: Path) -> None:
-    review_flow, feishu_client, github_client, action_queue_service, interaction_recorder = build_review_flow(
+    review_flow, feishu_client, github_client, action_queue_service, interaction_recorder, _ = build_review_flow(
         tmp_path=tmp_path,
         llm_response=load_text("analysis", "code_review_success.json"),
         github_patch=INLINE_PATCH_MESSAGE.split("```diff", maxsplit=1)[1].split("```", maxsplit=1)[0].strip(),
@@ -235,3 +244,90 @@ async def test_code_review_flow_executes_publish_approval(tmp_path: Path) -> Non
     assert "https://github.com/openai/demo/pull/12#issuecomment-1" in feishu_client.reply_calls[1][3]
     records = interaction_recorder.list_thread_records(scope)
     assert records[-1].event_type is InteractionEventType.ACTION_EXECUTED
+
+
+@pytest.mark.anyio
+async def test_code_review_flow_records_feedback_and_updates_preferences(tmp_path: Path) -> None:
+    review_flow, feishu_client, _, _, interaction_recorder, memory_service = build_review_flow(
+        tmp_path=tmp_path,
+        llm_response=load_text("analysis", "code_review_success.json"),
+    )
+    security_message = (
+        "@stackpilot 按安全重点审一下这个 diff\n"
+        "```diff\n"
+        "diff --git a/app/services/tickets.py b/app/services/tickets.py\n"
+        "--- a/app/services/tickets.py\n"
+        "+++ b/app/services/tickets.py\n"
+        "@@ -10,2 +10,4 @@ def build_ticket(payload):\n"
+        "+title = payload.get(\"title\").strip()\n"
+        "```\n"
+    )
+
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=build_trigger_event(security_message),
+    )
+    handled = await review_flow.process_feedback(
+        trigger_event=build_trigger_event("采纳建议 F1").model_copy(
+            update={"message_id": "om_review_feedback_1"}
+        ),
+    )
+
+    assert handled is True
+    assert "已记录为采纳" in feishu_client.reply_calls[-1][3]
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review")
+    records = interaction_recorder.list_thread_records(scope)
+    assert records[-1].event_type is InteractionEventType.REVIEW_FEEDBACK_RECORDED
+    review_state = memory_service.load_review_state(memory_service.resolve_scope(build_trigger_event(security_message)))
+    assert review_state is not None
+    assert review_state.findings[0].feedback_status is ReviewFeedbackStatus.ACCEPTED
+    user_memory = memory_service.load_user_memory(memory_service.resolve_scope(build_trigger_event(security_message)))
+    review_preferences = user_memory.get("review_preferences")
+    assert isinstance(review_preferences, dict)
+    assert review_preferences.get("accepted_focus_counts", {}).get("security") == 1
+
+
+@pytest.mark.anyio
+async def test_code_review_flow_reuses_preferred_focus_after_repeated_explicit_requests(tmp_path: Path) -> None:
+    review_flow, _, _, _, _, memory_service = build_review_flow(
+        tmp_path=tmp_path,
+        llm_response=load_text("analysis", "code_review_success.json"),
+    )
+    security_message = (
+        "@stackpilot 按安全审一下这个 diff\n"
+        "```diff\n"
+        "diff --git a/app/services/tickets.py b/app/services/tickets.py\n"
+        "--- a/app/services/tickets.py\n"
+        "+++ b/app/services/tickets.py\n"
+        "@@ -10,2 +10,4 @@ def build_ticket(payload):\n"
+        "+title = payload.get(\"title\").strip()\n"
+        "```\n"
+    )
+
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=build_trigger_event(security_message).model_copy(update={"message_id": "om_review_pref_1"}),
+    )
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=build_trigger_event(security_message).model_copy(update={"message_id": "om_review_pref_2", "thread_id": "omt_review_pref_2"}),
+    )
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(update={"message_id": "om_review_pref_3", "thread_id": "omt_review_pref_3"}),
+    )
+
+    user_memory = memory_service.load_user_memory(memory_service.resolve_scope(build_trigger_event(INLINE_PATCH_MESSAGE)))
+    review_preferences = user_memory.get("review_preferences")
+    assert isinstance(review_preferences, dict)
+    assert review_preferences.get("preferred_focus_areas") == ["security"]
+
+    review_state = memory_service.load_review_state(
+        memory_service.resolve_scope(
+            build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(
+                update={"message_id": "om_review_pref_3", "thread_id": "omt_review_pref_3"}
+            )
+        )
+    )
+    assert review_state is not None
+    assert [item.value for item in review_state.focus_areas] == ["security"]

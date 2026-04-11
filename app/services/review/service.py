@@ -59,11 +59,13 @@ class ReviewService:
             f"- {citation.label} | {citation.source_uri} | {citation.snippet}"
             for citation in request.policy_citations
         ) or "- none"
+        review_focus = ", ".join(item.value for item in request.focus_areas) or "bug_risk, test_gap"
         patch_excerpt = self._build_patch_excerpt(request)
 
         return (
             f"review_source_type: {request.source_type.value}\n"
             f"review_source_ref: {request.source_ref}\n"
+            f"review_focus_areas: {review_focus}\n"
             f"changed_files:\n{file_summary}\n\n"
             f"policy_refs:\n{policy_refs}\n\n"
             f"patch_excerpt:\n{patch_excerpt}\n"
@@ -251,21 +253,17 @@ class ReviewService:
         request: CodeReviewRequest,
     ) -> CodeReviewDraft:
         findings: list[ReviewFinding] = []
-        for finding in review_draft.findings:
-            if finding.evidence:
-                findings.append(finding)
-                continue
-
-            findings.append(
-                finding.model_copy(
-                    update={
-                        "evidence": self._build_diff_evidence_for_finding(
-                            request=request,
-                            finding=finding,
-                        )
-                    }
+        for index, finding in enumerate(review_draft.findings, start=1):
+            update: dict[str, object] = {
+                "finding_id": finding.finding_id or f"F{index}",
+                "focus_areas": finding.focus_areas or request.focus_areas,
+            }
+            if not finding.evidence:
+                update["evidence"] = self._build_diff_evidence_for_finding(
+                    request=request,
+                    finding=finding,
                 )
-            )
+            findings.append(finding.model_copy(update=update))
 
         if review_draft.status is ReviewResultStatus.SUCCESS and not findings:
             updated_missing_context = list(review_draft.missing_context)
@@ -276,6 +274,7 @@ class ReviewService:
 
         return review_draft.model_copy(
             update={
+                "focus_areas": request.focus_areas,
                 "findings": findings,
                 "publish_recommendation": publish_recommendation,
                 "missing_context": updated_missing_context,
@@ -321,6 +320,7 @@ class ReviewService:
             status=ReviewResultStatus.INSUFFICIENT_CONTEXT,
             overall_assessment="当前无法形成可靠的代码审查结论。",
             overall_risk=ReviewRiskLevel.LOW,
+            focus_areas=request.focus_areas,
             findings=[],
             missing_context=[
                 "可解析的 diff/patch 内容",

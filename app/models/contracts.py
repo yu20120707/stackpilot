@@ -12,6 +12,7 @@ class TriggerCommand(str, Enum):
     SUMMARIZE_THREAD = "summarize_thread"
     RERUN_ANALYSIS = "rerun_analysis"
     REVIEW_CODE = "review_code"
+    REVIEW_FEEDBACK = "review_feedback"
     APPROVE_ACTION = "approve_action"
 
 
@@ -74,6 +75,7 @@ class PendingActionStatus(str, Enum):
 class InteractionEventType(str, Enum):
     ANALYSIS_REPLY_SENT = "analysis_reply_sent"
     REVIEW_DRAFT_SENT = "review_draft_sent"
+    REVIEW_FEEDBACK_RECORDED = "review_feedback_recorded"
     ACTIONS_PROPOSED = "actions_proposed"
     ACTION_EXECUTED = "action_executed"
     REPLY_SEND_FAILED = "reply_send_failed"
@@ -94,6 +96,17 @@ class ReviewRiskLevel(str, Enum):
 class ReviewSourceType(str, Enum):
     GITHUB_PR = "github_pr"
     PATCH_TEXT = "patch_text"
+
+
+class ReviewFocusArea(str, Enum):
+    BUG_RISK = "bug_risk"
+    TEST_GAP = "test_gap"
+    SECURITY = "security"
+
+
+class ReviewFeedbackStatus(str, Enum):
+    ACCEPTED = "accepted"
+    IGNORED = "ignored"
 
 
 class ReviewEvidenceType(str, Enum):
@@ -164,12 +177,16 @@ class ReviewEvidenceReference(BaseModel):
 class ReviewFinding(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
+    finding_id: str | None = None
     title: NonEmptyText = Field(min_length=1)
     severity: ReviewRiskLevel
     summary: NonEmptyText = Field(min_length=1)
     file_path: str | None = None
     line_start: int | None = Field(default=None, ge=1)
     line_end: int | None = Field(default=None, ge=1)
+    focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
+    feedback_status: ReviewFeedbackStatus | None = None
+    feedback_recorded_at: datetime | None = None
     evidence: list[ReviewEvidenceReference] = Field(default_factory=list)
 
 
@@ -182,6 +199,7 @@ class CodeReviewDraft(BaseModel):
     ]
     overall_assessment: NonEmptyText = Field(min_length=1)
     overall_risk: ReviewRiskLevel
+    focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
     findings: list[ReviewFinding] = Field(default_factory=list)
     missing_context: list[NonEmptyText] = Field(default_factory=list)
     publish_recommendation: NonEmptyText = Field(min_length=1)
@@ -231,8 +249,22 @@ class CodeReviewRequest(BaseModel):
     raw_input: NonEmptyText = Field(min_length=1)
     normalized_patch: NonEmptyText = Field(min_length=1)
     files: list[DiffFileChange] = Field(default_factory=list)
+    focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
     policy_citations: list[KnowledgeCitation] = Field(default_factory=list)
     source_message_text: NonEmptyText = Field(min_length=1)
+
+
+class ReviewMemoryState(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    schema_version: int = Field(default=1, ge=1)
+    source_type: ReviewSourceType
+    source_ref: NonEmptyText = Field(min_length=1)
+    last_review_message_id: str | None = None
+    last_review_status: ReviewResultStatus
+    focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
+    findings: list[ReviewFinding] = Field(default_factory=list)
+    updated_at: datetime
 
 
 class AnalysisRequest(BaseModel):

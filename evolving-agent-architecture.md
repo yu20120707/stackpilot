@@ -153,6 +153,8 @@ Current MVP note:
 - the runtime entry remains Feishu-first
 - a workflow router dispatches explicit review triggers to a dedicated review flow
 - GitHub publication is draft-first and approval-gated
+- review focus can come from explicit request text or stored preference memory
+- accepted findings are recorded explicitly before they can influence draft skill mining
 
 Core user-visible outputs:
 

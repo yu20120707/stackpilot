@@ -73,3 +73,33 @@ def test_interaction_recorder_keeps_tenant_and_thread_isolation(tmp_path: Path) 
     assert [record.event_id for record in recorder.list_thread_records(first_scope)] == ["evt-1"]
     assert [record.event_id for record in recorder.list_thread_records(second_scope)] == ["evt-2"]
     assert [entry.event_id for entry in audit_log_service.list_entries("oc_xxx")] == ["evt-1", "evt-2"]
+
+
+def test_interaction_recorder_summarizes_review_feedback_events(tmp_path: Path) -> None:
+    audit_log_service = AuditLogService(tmp_path / "records")
+    recorder = InteractionRecorder(
+        tmp_path / "records",
+        audit_log_service=audit_log_service,
+    )
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review")
+
+    recorder.record(
+        scope,
+        InteractionRecord(
+            event_id="evt-review-feedback",
+            correlation_key="review-feedback:F1:accepted",
+            event_type=InteractionEventType.REVIEW_FEEDBACK_RECORDED,
+            tenant_id="oc_xxx",
+            thread_id="omt_review",
+            actor_id="ou_bob",
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=TriggerCommand.REVIEW_FEEDBACK,
+            payload={
+                "finding_id": "F1",
+                "feedback_status": "accepted",
+            },
+        ),
+    )
+
+    audit_entries = audit_log_service.list_entries("oc_xxx")
+    assert audit_entries[-1].summary == "review_feedback_recorded:F1:accepted"

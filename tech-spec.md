@@ -21,6 +21,8 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - manual AI code review from inline diff or GitHub PR input
 - deterministic diff normalization and structured draft review findings
 - approval-backed GitHub draft review publishing
+- review focus routing with repeated-request user preference memory
+- explicit review finding feedback recording and review-memory persistence
 
 Still out of scope for the current foundation:
 
@@ -88,6 +90,7 @@ app/
       diff_reader.py
       flow.py
       input_parser.py
+      preference_service.py
       policy_service.py
       publish_service.py
       renderer.py
@@ -200,6 +203,8 @@ P0 supported manual commands:
 - `批准动作 A1`
 - `帮我 review 这个 PR https://github.com/org/repo/pull/123`
 - `审一下这个 diff` with inline patch content
+- `采纳建议 F1`
+- `忽略建议 F2`
 
 The route must hand off a normalized trigger event to a workflow router, which then dispatches either incident analysis or AI code review to the service layer.
 
@@ -243,9 +248,12 @@ One AI-code-review request currently moves through the system in this order:
 6. For GitHub PR input, the GitHub client attempts to fetch the PR diff
 7. The diff reader normalizes changed files and hunks into a stable review request
 8. The review policy service selects any relevant local policy citations
-9. The review service prompts the LLM for a structured draft review
-10. The review renderer returns a Feishu draft reply, and GitHub publish is queued as a pending action when applicable
-11. Users can approve the pending publish action from the same thread to post a draft comment back to GitHub
+9. The review preference service resolves explicit or remembered focus areas
+10. The review service prompts the LLM for a structured draft review
+11. The review renderer returns a Feishu draft reply, and GitHub publish is queued as a pending action when applicable
+12. The review memory service persists the latest review state and finding ids for the thread
+13. Users can approve the pending publish action from the same thread to post a draft comment back to GitHub
+14. Users can explicitly mark findings as accepted or ignored from the same thread, and the interaction recorder stores those feedback signals for later mining
 
 Approval-backed incident actions move through this order:
 

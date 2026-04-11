@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `CR-001` complete
-- Overall status: the codebase now has a Feishu-first AI code review MVP on top of the incident workflow baseline and shared growth kernel, including manual PR or patch review triggers, deterministic diff normalization, structured findings, and approval-backed GitHub draft publishing
-- Recommended next task: `CR-002 Grow review reuse safely with policy routing and adoption signals`
-- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, draft skill candidates, workflow-router dispatching, and `92` passing regression tests
+- Phase: `CR-002` complete
+- Overall status: the codebase now has a Feishu-first AI code review workflow with explicit focus routing, repeated-request preference memory, explicit finding adoption signals, and review-focus draft skill candidates on top of the shared growth kernel
+- Recommended next task: `MEM-002 Expand org memory and team-style shaping across incident and review workflows`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, draft skill candidates, workflow-router dispatching, and `99` passing regression tests
 
 ## Canonical Files
 
@@ -32,6 +32,7 @@
 - the current implemented workflow remains explicit manual trigger in Feishu
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
 - AI code review now supports explicit PR-link or inline diff triggers and keeps external GitHub publication behind approval
+- Review focus can now come from explicit request text or repeated user preference memory, and accepted findings can be recorded explicitly from the same Feishu thread
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated through a thread-scoped pending action queue
 - skill candidates remain draft-only by default and do not participate in runtime routing yet
@@ -48,6 +49,7 @@
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
 - GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
+- Org-level convention memory still exists mainly as a passive store; it does not yet shape output strongly enough across incident and review workflows.
 
 ## Handoff Rules
 
@@ -310,6 +312,54 @@ Required fields:
   - Review adoption recording, preference memory, and review-specific skill mining remain for the next milestone
 - Next recommended task:
   - `CR-002 Grow review reuse safely with policy routing and adoption signals`
+
+### Session 027
+
+- Date: 2026-04-11
+- Primary task: `CR-002`
+- Objective: extend the AI code review workflow with safe reuse primitives including explicit review focus routing, user preference memory, finding adoption signals, and review-pattern draft skill candidates
+- Files changed:
+  - `README.md`
+  - `api-contracts.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/kernel/interaction_recorder.py`
+  - `app/services/kernel/memory_service.py`
+  - `app/services/review/flow.py`
+  - `app/services/review/preference_service.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/review/renderer.py`
+  - `app/services/review/service.py`
+  - `app/services/skill_miner.py`
+  - `app/services/workflow_router.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_analysis_contracts.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_interaction_recorder.py`
+  - `tests/test_skill_miner.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_feishu_callback.py tests/test_analysis_contracts.py tests/test_code_review_flow.py tests/test_interaction_recorder.py tests/test_skill_miner.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+  - `powershell -ExecutionPolicy Bypass -File .\\init.ps1`
+- Result:
+  - `CR-002` complete
+  - Code review now routes focus areas explicitly and can reuse repeated user focus preferences when the next request omits them
+  - Review findings now get stable ids, thread-scoped review memory, and explicit feedback commands such as `采纳建议 F1` or `忽略建议 F2`
+  - Accepted review findings now enter the growth kernel and can produce review-focus draft skill candidates without enabling runtime auto-fix or auto-activation
+- Blockers:
+  - Org-level convention memory still needs a stronger shaping layer for cross-workflow defaults and output formatting
+  - Review adoption is currently recorded from explicit Feishu feedback commands rather than from GitHub thread resolution signals
+- Next recommended task:
+  - `MEM-002 Expand org memory and team-style shaping across incident and review workflows`
 
 ### Session 001
 

@@ -14,13 +14,17 @@ from app.models.contracts import (
     NormalizedFeishuMessageEvent,
     PendingActionType,
     PendingIncidentAction,
-    ReviewResultStatus,
+    ReviewFeedbackStatus,
+    ReviewFocusArea,
+    ReviewMemoryState,
     TriggerCommand,
 )
-from app.services.command_parser import extract_approved_action_id
+from app.services.command_parser import extract_approved_action_id, extract_review_feedback
 from app.services.kernel.interaction_recorder import InteractionRecorder
+from app.services.kernel.memory_service import MemoryService
 from app.services.review.diff_reader import DiffReader
 from app.services.review.input_parser import extract_review_input
+from app.services.review.preference_service import ReviewPreferenceService
 from app.services.review.policy_service import ReviewPolicyService
 from app.services.review.publish_service import ReviewPublishService
 from app.services.review.renderer import ReviewRenderer
@@ -39,9 +43,11 @@ class CodeReviewFlow:
         github_review_client: GitHubReviewClient,
         diff_reader: DiffReader,
         review_policy_service: ReviewPolicyService,
+        review_preference_service: ReviewPreferenceService,
         review_service: ReviewService,
         review_renderer: ReviewRenderer,
         review_publish_service: ReviewPublishService,
+        memory_service: MemoryService | None = None,
         interaction_recorder: InteractionRecorder | None = None,
         skill_miner: SkillMiner | None = None,
     ) -> None:
@@ -49,9 +55,11 @@ class CodeReviewFlow:
         self.github_review_client = github_review_client
         self.diff_reader = diff_reader
         self.review_policy_service = review_policy_service
+        self.review_preference_service = review_preference_service
         self.review_service = review_service
         self.review_renderer = review_renderer
         self.review_publish_service = review_publish_service
+        self.memory_service = memory_service
         self.interaction_recorder = interaction_recorder
         self.skill_miner = skill_miner
 
@@ -110,6 +118,13 @@ class CodeReviewFlow:
             review_reply=review_reply,
             pending_actions=pending_actions,
         )
+        self._persist_review_state(
+            trigger_event=trigger_event,
+            review_request=review_request,
+            review_reply=review_reply,
+            pending_actions=pending_actions,
+            reply_message_id=send_result.reply_message_id,
+        )
 
     async def process_approval(
         self,
@@ -147,6 +162,87 @@ class CodeReviewFlow:
             )
         return True
 
+    async def process_feedback(
+        self,
+        *,
+        trigger_event: NormalizedFeishuMessageEvent,
+    ) -> bool:
+        feedback = extract_review_feedback(trigger_event.message_text)
+        if feedback is None:
+            return False
+        if self.memory_service is None:
+            return False
+
+        memory_scope = self.memory_service.resolve_scope(trigger_event)
+        review_state = self.memory_service.load_review_state(memory_scope)
+        if review_state is None:
+            await self._send_reply(
+                trigger_event=trigger_event,
+                reply_text="当前线程里还没有可记录反馈的 review 草稿。请先触发一次代码审查。",
+            )
+            return True
+
+        status_name, finding_id = feedback
+        feedback_status = (
+            ReviewFeedbackStatus.ACCEPTED
+            if status_name == "accepted"
+            else ReviewFeedbackStatus.IGNORED
+        )
+
+        updated_findings = []
+        target_finding = None
+        now = datetime.now(timezone.utc)
+        for finding in review_state.findings:
+            if (finding.finding_id or "").upper() == finding_id:
+                updated_finding = finding.model_copy(
+                    update={
+                        "feedback_status": feedback_status,
+                        "feedback_recorded_at": now,
+                    }
+                )
+                updated_findings.append(updated_finding)
+                target_finding = updated_finding
+            else:
+                updated_findings.append(finding)
+
+        if target_finding is None:
+            await self._send_reply(
+                trigger_event=trigger_event,
+                reply_text=f"未找到 review finding：{finding_id}。请确认编号来自当前线程里的代码审查结果。",
+            )
+            return True
+
+        next_state = review_state.model_copy(
+            update={
+                "findings": updated_findings,
+                "updated_at": now,
+            }
+        )
+        self.memory_service.save_review_state(memory_scope, next_state)
+
+        scope = self.review_publish_service.action_queue_service.resolve_scope(trigger_event)
+        self._record_review_feedback(
+            scope=scope,
+            trigger_event=trigger_event,
+            finding=target_finding,
+            feedback_status=feedback_status,
+            source_ref=review_state.source_ref,
+        )
+        self.review_preference_service.observe_feedback(
+            scope=memory_scope,
+            finding=target_finding,
+            feedback_status=feedback_status,
+        )
+        if self.skill_miner is not None:
+            self.skill_miner.evaluate_tenant(scope.tenant_id)
+
+        feedback_text = "已记录为采纳" if feedback_status is ReviewFeedbackStatus.ACCEPTED else "已记录为忽略"
+        await self._send_reply(
+            trigger_event=trigger_event,
+            reply_text=f"{feedback_text}：{target_finding.finding_id} {target_finding.title}",
+        )
+        return True
+
     async def _build_review_request(
         self,
         *,
@@ -156,6 +252,21 @@ class CodeReviewFlow:
         review_input = extract_review_input(trigger_event.message_text)
         if review_input is None:
             return None
+
+        if self.memory_service is not None:
+            memory_scope = self.memory_service.resolve_scope(trigger_event)
+            focus_areas, explicit_focus_areas = self.review_preference_service.resolve_focus_areas(
+                scope=memory_scope,
+                message_text=trigger_event.message_text,
+            )
+            self.review_preference_service.observe_review_request(
+                scope=memory_scope,
+                explicit_focus_areas=explicit_focus_areas,
+            )
+        else:
+            focus_areas = self.review_preference_service.extract_focus_areas(trigger_event.message_text)
+            if not focus_areas:
+                focus_areas = [ReviewFocusArea.BUG_RISK, ReviewFocusArea.TEST_GAP]
 
         normalized_patch = review_input.raw_input
         if review_input.source_type.value == "github_pr":
@@ -183,6 +294,7 @@ class CodeReviewFlow:
             raw_input=review_input.raw_input,
             normalized_patch=normalized_patch,
             files=files,
+            focus_areas=focus_areas,
             source_message_text=trigger_event.message_text,
         )
 
@@ -246,6 +358,7 @@ class CodeReviewFlow:
             payload={
                 "source_ref": review_request.source_ref,
                 "source_type": review_request.source_type.value,
+                "focus_areas": [item.value for item in review_request.focus_areas],
                 "changed_files": len(review_request.files),
                 "policy_refs": [citation.source_uri for citation in review_request.policy_citations],
                 "status": getattr(review_reply, "status", None),
@@ -317,6 +430,39 @@ class CodeReviewFlow:
         if self.skill_miner is not None and action.status.value == "executed":
             self.skill_miner.evaluate_tenant(scope.tenant_id)
 
+    def _record_review_feedback(
+        self,
+        *,
+        scope: ActionScope,
+        trigger_event: NormalizedFeishuMessageEvent,
+        finding,
+        feedback_status: ReviewFeedbackStatus,
+        source_ref: str,
+    ) -> None:
+        if self.interaction_recorder is None:
+            return
+
+        primary_focus = finding.focus_areas[0].value if finding.focus_areas else "general"
+        record = InteractionRecord(
+            event_id=f"{trigger_event.message_id}-feedback-{(finding.finding_id or 'finding').lower()}",
+            correlation_key=f"{InteractionEventType.REVIEW_FEEDBACK_RECORDED.value}:{trigger_event.message_id}:{finding.finding_id}:{feedback_status.value}",
+            event_type=InteractionEventType.REVIEW_FEEDBACK_RECORDED,
+            tenant_id=scope.tenant_id,
+            thread_id=scope.thread_id,
+            actor_id=trigger_event.sender_id,
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=TriggerCommand.REVIEW_FEEDBACK,
+            pattern_key=f"review/focus/{primary_focus}/{feedback_status.value}_finding",
+            payload={
+                "finding_id": finding.finding_id,
+                "finding_title": finding.title,
+                "focus_areas": [item.value for item in finding.focus_areas],
+                "feedback_status": feedback_status.value,
+                "source_ref": source_ref,
+            },
+        )
+        self.interaction_recorder.record(scope, record)
+
     def _record_reply_send_failure(
         self,
         *,
@@ -342,6 +488,30 @@ class CodeReviewFlow:
             payload={"error_message": "feishu_send_failed"},
         )
         self.interaction_recorder.record(scope, record)
+
+    def _persist_review_state(
+        self,
+        *,
+        trigger_event: NormalizedFeishuMessageEvent,
+        review_request: CodeReviewRequest,
+        review_reply,
+        pending_actions: list[PendingIncidentAction],
+        reply_message_id: str | None,
+    ) -> None:
+        if self.memory_service is None or not isinstance(review_reply, CodeReviewDraft):
+            return
+
+        scope = self.memory_service.resolve_scope(trigger_event)
+        review_state = ReviewMemoryState(
+            source_type=review_request.source_type,
+            source_ref=review_request.source_ref,
+            last_review_message_id=reply_message_id,
+            last_review_status=review_reply.status,
+            focus_areas=review_request.focus_areas,
+            findings=review_reply.findings,
+            updated_at=datetime.now(timezone.utc),
+        )
+        self.memory_service.save_review_state(scope, review_state)
 
     def _pattern_key_for(self, action_type: PendingActionType) -> str:
         return f"review/{action_type.value}/approval_loop"
