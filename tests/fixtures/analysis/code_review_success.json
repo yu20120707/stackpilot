@@ -1,0 +1,20 @@
+{
+  "status": "success",
+  "overall_assessment": "The diff is mostly straightforward, but one new path can fail on malformed input before validation.",
+  "overall_risk": "medium",
+  "findings": [
+    {
+      "title": "Missing null-safe title normalization",
+      "severity": "medium",
+      "summary": "The new branch calls strip() on the incoming title before checking whether the payload actually provided a string. A malformed request can raise before returning a controlled validation error.",
+      "file_path": "app/services/tickets.py",
+      "line_start": 12,
+      "line_end": 14,
+      "evidence": []
+    }
+  ],
+  "missing_context": [
+    "The related request validation tests were not included in the diff."
+  ],
+  "publish_recommendation": "建议先保留为草稿并确认上游是否已经保证 title 一定为字符串。"
+}

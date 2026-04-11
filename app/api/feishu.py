@@ -327,13 +327,13 @@ def _queue_live_flow(
     normalized_event: NormalizedFeishuMessageEvent,
 ) -> None:
     services = getattr(request.app.state, "services", None)
-    live_flow = getattr(services, "feishu_live_flow", None)
-    if live_flow is None:
-        logger.warning("Feishu callback accepted but no live flow service is configured.")
+    workflow_router = getattr(services, "workflow_router", None)
+    if workflow_router is None:
+        logger.warning("Feishu callback accepted but no workflow router is configured.")
         return
 
     background_tasks.add_task(
-        live_flow.process_trigger,
+        workflow_router.process_trigger,
         trigger_command=trigger_command,
         trigger_event=normalized_event,
     )

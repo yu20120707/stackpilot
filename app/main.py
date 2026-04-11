@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from fastapi import FastAPI
 
 from app.clients.feishu_client import FeishuClient, FeishuClientConfig
+from app.clients.github_review_client import GitHubReviewClient, GitHubReviewClientConfig
 from app.clients.llm_client import LLMClient, LLMClientConfig
 from app.api.feishu import router as feishu_router
 from app.core.config import Settings, get_settings
@@ -18,22 +19,33 @@ from app.services.knowledge_base import KnowledgeBase
 from app.services.postmortem_renderer import PostmortemRenderer
 from app.services.postmortem_service import PostmortemService
 from app.services.reply_renderer import ReplyRenderer
+from app.services.review.diff_reader import DiffReader
+from app.services.review.flow import CodeReviewFlow
+from app.services.review.policy_service import ReviewPolicyService
+from app.services.review.publish_service import ReviewPublishService
+from app.services.review.renderer import ReviewRenderer
+from app.services.review.service import ReviewService
 from app.services.skill_miner import SkillMiner
 from app.services.skill_registry import SkillRegistry
 from app.services.task_sync_service import TaskSyncService
 from app.services.thread_reader import ThreadReader
+from app.services.workflow_router import WorkflowRouter
 
 
 @dataclass(slots=True)
 class AppServices:
     settings: Settings
     feishu_client: FeishuClient
+    github_review_client: GitHubReviewClient
     llm_client: LLMClient
     memory_service: MemoryService
     feishu_live_flow: FeishuLiveFlow
+    code_review_flow: CodeReviewFlow
+    workflow_router: WorkflowRouter
 
     async def aclose(self) -> None:
         await self.feishu_client.aclose()
+        await self.github_review_client.aclose()
         await self.llm_client.aclose()
 
 
@@ -53,6 +65,13 @@ def build_services(settings: Settings) -> AppServices:
             api_key=settings.llm_api_key,
             model=settings.llm_model,
             timeout_seconds=settings.llm_timeout_seconds,
+        )
+    )
+    github_review_client = GitHubReviewClient(
+        GitHubReviewClientConfig(
+            base_url=settings.github_api_base_url,
+            token=settings.github_token,
+            timeout_seconds=settings.github_timeout_seconds,
         )
     )
     memory_service = MemoryService(settings.resolved_memory_dir)
@@ -90,6 +109,14 @@ def build_services(settings: Settings) -> AppServices:
         postmortem_renderer=postmortem_renderer,
     )
     reply_renderer = ReplyRenderer()
+    review_renderer = ReviewRenderer()
+    review_service = ReviewService(llm_client)
+    review_policy_service = ReviewPolicyService(knowledge_base)
+    review_publish_service = ReviewPublishService(
+        action_queue_service=action_queue_service,
+        github_review_client=github_review_client,
+        review_renderer=review_renderer,
+    )
     feishu_live_flow = FeishuLiveFlow(
         feishu_client=feishu_client,
         thread_reader=thread_reader,
@@ -101,12 +128,30 @@ def build_services(settings: Settings) -> AppServices:
         interaction_recorder=interaction_recorder,
         skill_miner=skill_miner,
     )
+    code_review_flow = CodeReviewFlow(
+        feishu_client=feishu_client,
+        github_review_client=github_review_client,
+        diff_reader=DiffReader(),
+        review_policy_service=review_policy_service,
+        review_service=review_service,
+        review_renderer=review_renderer,
+        review_publish_service=review_publish_service,
+        interaction_recorder=interaction_recorder,
+        skill_miner=skill_miner,
+    )
+    workflow_router = WorkflowRouter(
+        incident_flow=feishu_live_flow,
+        code_review_flow=code_review_flow,
+    )
     return AppServices(
         settings=settings,
         feishu_client=feishu_client,
+        github_review_client=github_review_client,
         llm_client=llm_client,
         memory_service=memory_service,
         feishu_live_flow=feishu_live_flow,
+        code_review_flow=code_review_flow,
+        workflow_router=workflow_router,
     )
 
 

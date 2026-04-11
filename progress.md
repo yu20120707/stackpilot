@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `GRW-001` complete
-- Overall status: the codebase now has a draft-only growth kernel on top of the incident workflow baseline, with append-only interaction evidence, tenant audit logs, deterministic skill-candidate mining, and lifecycle guards that prevent unapproved activation
-- Recommended next task: `CR-001 Launch AI code review MVP on the shared growth kernel`
-- Last known good state: runnable incident-analysis scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident actions, append-only growth evidence, draft skill candidates, live Feishu orchestration wiring, and `84` passing regression tests
+- Phase: `CR-001` complete
+- Overall status: the codebase now has a Feishu-first AI code review MVP on top of the incident workflow baseline and shared growth kernel, including manual PR or patch review triggers, deterministic diff normalization, structured findings, and approval-backed GitHub draft publishing
+- Recommended next task: `CR-002 Grow review reuse safely with policy routing and adoption signals`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, draft skill candidates, workflow-router dispatching, and `92` passing regression tests
 
 ## Canonical Files
 
@@ -31,6 +31,7 @@
 - P0 implementation draft stack is `Python 3.11 + FastAPI + Pydantic`
 - the current implemented workflow remains explicit manual trigger in Feishu
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
+- AI code review now supports explicit PR-link or inline diff triggers and keeps external GitHub publication behind approval
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated through a thread-scoped pending action queue
 - skill candidates remain draft-only by default and do not participate in runtime routing yet
@@ -46,6 +47,7 @@
 - If implementation work equates "self-evolution" with autonomous code rewriting, the safety boundary will collapse.
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
+- GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
 
 ## Handoff Rules
 
@@ -259,6 +261,55 @@ Required fields:
   - AI code review still has no diff ingestion, structured finding model, or publish flow
 - Next recommended task:
   - `CR-001 Launch AI code review MVP on the shared growth kernel`
+
+### Session 026
+
+- Date: 2026-04-11
+- Primary task: `CR-001`
+- Objective: launch the first AI code review workflow on the shared kernel with manual PR or patch triggers, deterministic diff normalization, structured draft findings, and approval-backed GitHub draft publishing
+- Files changed:
+  - `app/api/feishu.py`
+  - `app/clients/github_review_client.py`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/prompts/code_review_prompt.md`
+  - `app/services/command_parser.py`
+  - `app/services/review/__init__.py`
+  - `app/services/review/diff_reader.py`
+  - `app/services/review/flow.py`
+  - `app/services/review/input_parser.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/review/publish_service.py`
+  - `app/services/review/renderer.py`
+  - `app/services/review/service.py`
+  - `app/services/workflow_router.py`
+  - `README.md`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `tech-spec.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/fixtures/analysis/code_review_success.json`
+  - `tests/test_analysis_contracts.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_diff_reader.py`
+  - `tests/test_feishu_callback.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_analysis_contracts.py tests/test_diff_reader.py tests/test_feishu_callback.py tests/test_code_review_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `CR-001` complete
+  - The repository now supports explicit AI code review triggers from Feishu using either inline diff or GitHub PR input
+  - GitHub PR review attempts fetch the PR diff, normalize changed files and hunks, generate structured findings, and return a draft review in-thread
+  - External GitHub publication remains approval-gated through a thread-scoped pending action and the shared workflow router now dispatches incident, review, and approval commands cleanly
+- Blockers:
+  - Private GitHub repositories still require a configured `GITHUB_TOKEN` for diff fetch and draft comment publishing
+  - Review adoption recording, preference memory, and review-specific skill mining remain for the next milestone
+- Next recommended task:
+  - `CR-002 Grow review reuse safely with policy routing and adoption signals`
 
 ### Session 001
 

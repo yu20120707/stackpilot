@@ -148,6 +148,12 @@ Primary loop:
 
 `submit diff/pr -> normalize review request -> retrieve policy/evidence -> generate findings -> approve -> publish -> record acceptance`
 
+Current MVP note:
+
+- the runtime entry remains Feishu-first
+- a workflow router dispatches explicit review triggers to a dedicated review flow
+- GitHub publication is draft-first and approval-gated
+
 Core user-visible outputs:
 
 - overall review assessment
@@ -213,7 +219,11 @@ Expected new services over time:
 - `app/services/skill_registry.py`
 - `app/services/approval_policy.py`
 - `app/services/action_queue.py`
-- `app/services/code_review_flow.py`
+- `app/services/workflow_router.py`
+- `app/services/review/flow.py`
+- `app/services/review/diff_reader.py`
+- `app/services/review/service.py`
+- `app/services/review/publish_service.py`
 
 ## 9. Final Product Definition
 

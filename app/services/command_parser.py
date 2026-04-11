@@ -1,6 +1,7 @@
 import re
 
 from app.models.contracts import TriggerCommand
+from app.services.review.input_parser import has_github_pull_request_url, has_patch_text
 
 SUPPORTED_TRIGGER_PHRASES: dict[TriggerCommand, tuple[str, ...]] = {
     TriggerCommand.ANALYZE_INCIDENT: (
@@ -36,6 +37,16 @@ SUPPORTED_TRIGGER_PHRASES: dict[TriggerCommand, tuple[str, ...]] = {
         "再分析下",
         "重试一下",
     ),
+    TriggerCommand.REVIEW_CODE: (
+        "帮我cr这个pr",
+        "帮我review这个pr",
+        "审一下这个pr",
+        "审一下这个diff",
+        "帮我做代码审查",
+        "review this pr",
+        "review this diff",
+        "code review this pr",
+    ),
 }
 
 MENTION_TAG_PATTERN = re.compile(r"<at\b[^>]*>.*?</at>", re.IGNORECASE)
@@ -56,6 +67,12 @@ def parse_trigger_command(message_text: str) -> TriggerCommand | None:
 
     if extract_approved_action_id(normalized_text) is not None:
         return TriggerCommand.APPROVE_ACTION
+
+    if _is_code_review_trigger(
+        original_text=message_text,
+        normalized_text=normalized_text,
+    ):
+        return TriggerCommand.REVIEW_CODE
 
     collapsed_text = collapse_for_matching(normalized_text)
 
@@ -92,3 +109,23 @@ def is_follow_up_trigger(trigger_command: TriggerCommand) -> bool:
         TriggerCommand.SUMMARIZE_THREAD,
         TriggerCommand.RERUN_ANALYSIS,
     }
+
+
+def _is_code_review_trigger(*, original_text: str, normalized_text: str) -> bool:
+    if not (has_github_pull_request_url(original_text) or has_patch_text(original_text)):
+        return False
+
+    collapsed_text = collapse_for_matching(normalized_text)
+    phrases = SUPPORTED_TRIGGER_PHRASES.get(TriggerCommand.REVIEW_CODE, ())
+    if any(collapse_for_matching(phrase) in collapsed_text for phrase in phrases):
+        return True
+
+    return any(
+        token in collapsed_text
+        for token in (
+            "cr",
+            "review",
+            "代码审查",
+            "codereview",
+        )
+    )

@@ -18,6 +18,9 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - deterministic retrieval planning, routing, and evidence ranking
 - pending incident action persistence with approval-backed execution
 - append-only evidence recording and draft skill candidate generation
+- manual AI code review from inline diff or GitHub PR input
+- deterministic diff normalization and structured draft review findings
+- approval-backed GitHub draft review publishing
 
 Still out of scope for the current foundation:
 
@@ -54,6 +57,7 @@ app/
     feishu.py
   clients/
     feishu_client.py
+    github_review_client.py
     llm_client.py
   core/
     config.py
@@ -74,11 +78,20 @@ app/
     skill_miner.py
     skill_registry.py
     task_sync_service.py
+    workflow_router.py
     kernel/
       action_queue_service.py
       audit_log_service.py
       interaction_recorder.py
       memory_service.py
+    review/
+      diff_reader.py
+      flow.py
+      input_parser.py
+      policy_service.py
+      publish_service.py
+      renderer.py
+      service.py
     retrieval/
       planner.py
       router.py
@@ -127,6 +140,9 @@ Optional for P0:
 - `FEISHU_ENCRYPT_KEY`
 - `FEISHU_VERIFICATION_TOKEN`
 - `LLM_TIMEOUT_SECONDS`
+- `GITHUB_API_BASE_URL`
+- `GITHUB_TOKEN`
+- `GITHUB_TIMEOUT_SECONDS`
 - `MAX_THREAD_MESSAGES`
 - `MAX_KNOWLEDGE_HITS`
 - `ACTION_DIR`
@@ -138,6 +154,8 @@ Default behavior:
 
 - `KNOWLEDGE_DIR` defaults to `data/knowledge`
 - `LLM_TIMEOUT_SECONDS` defaults to `30`
+- `GITHUB_API_BASE_URL` defaults to `https://api.github.com`
+- `GITHUB_TIMEOUT_SECONDS` defaults to `20`
 - `MAX_THREAD_MESSAGES` defaults to `50`
 - `MAX_KNOWLEDGE_HITS` defaults to `5`
 - `ACTION_DIR` defaults to `data/actions`
@@ -180,8 +198,10 @@ P0 supported manual commands:
 - `帮我总结当前结论`
 - `基于最新信息重试`
 - `批准动作 A1`
+- `帮我 review 这个 PR https://github.com/org/repo/pull/123`
+- `审一下这个 diff` with inline patch content
 
-The route must hand off a normalized `AnalysisRequest` object to the service layer.
+The route must hand off a normalized trigger event to a workflow router, which then dispatches either incident analysis or AI code review to the service layer.
 
 ## 6. Callback Handling Rules
 
@@ -204,13 +224,28 @@ One incident-analysis request currently moves through the system in this order:
 1. Feishu callback reaches `/api/feishu/events`
 2. The route validates and normalizes the event
 3. The command parser extracts the user intent
-4. The thread reader loads the current thread or message context
-5. The knowledge service loads or queries local knowledge documents
-6. The analysis service builds the LLM input and requests a structured summary
-7. For summarize-thread success cases, the incident-action service prepares task-sync and postmortem proposals and stores them in the action queue
-8. The reply renderer converts the structured result into user-facing Feishu text
-9. The Feishu client posts the reply back to the same discussion context
-10. The thread memory service persists the latest successful structured summary state
+4. The workflow router dispatches incident-analysis commands to the incident live flow
+5. The thread reader loads the current thread or message context
+6. The knowledge service loads or queries local knowledge documents
+7. The analysis service builds the LLM input and requests a structured summary
+8. For summarize-thread success cases, the incident-action service prepares task-sync and postmortem proposals and stores them in the action queue
+9. The reply renderer converts the structured result into user-facing Feishu text
+10. The Feishu client posts the reply back to the same discussion context
+11. The thread memory service persists the latest successful structured summary state
+
+One AI-code-review request currently moves through the system in this order:
+
+1. Feishu callback reaches `/api/feishu/events`
+2. The route validates and normalizes the event
+3. The command parser extracts an explicit code-review trigger
+4. The workflow router dispatches the request to the review flow
+5. The review input parser extracts either an inline patch or a GitHub PR URL
+6. For GitHub PR input, the GitHub client attempts to fetch the PR diff
+7. The diff reader normalizes changed files and hunks into a stable review request
+8. The review policy service selects any relevant local policy citations
+9. The review service prompts the LLM for a structured draft review
+10. The review renderer returns a Feishu draft reply, and GitHub publish is queued as a pending action when applicable
+11. Users can approve the pending publish action from the same thread to post a draft comment back to GitHub
 
 Approval-backed incident actions move through this order:
 
@@ -319,6 +354,6 @@ This foundation spec still does not define:
 - automatic incident detection
 - autonomous task execution without approval
 - external vector-backed retrieval infrastructure
-- AI code review publish flow
+- automatic code fixing or commit submission
 
 Those belong to later milestones and should not be pulled into the implemented foundation by default.

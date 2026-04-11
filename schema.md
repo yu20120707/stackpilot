@@ -438,7 +438,7 @@ Field rules:
 
 - `event_id`: required unique event id
 - `correlation_key`: required dedupe key for repeated deliveries
-- `event_type`: required enum: `analysis_reply_sent`, `actions_proposed`, `action_executed`, `reply_send_failed`
+- `event_type`: required enum: `analysis_reply_sent`, `review_draft_sent`, `actions_proposed`, `action_executed`, `reply_send_failed`
 - `tenant_id`: required tenant/chat id
 - `thread_id`: required thread id
 - `actor_id`: required actor id
@@ -497,6 +497,84 @@ Field rules:
 - `evidence_event_ids`: required array of event ids
 - `approved_by`, `approved_at`: optional approval metadata
 - `activated_by`, `activated_at`: optional activation metadata
+
+## 10.4 AI Code Review Models
+
+The implemented foundation now includes a manual AI code review workflow.
+
+Review request example:
+
+```json
+{
+  "trigger_command": "review_code",
+  "chat_id": "oc_xxx",
+  "thread_id": "omt_review",
+  "trigger_message_id": "om_review_1",
+  "user_id": "ou_xxx",
+  "source_type": "github_pr",
+  "source_ref": "https://github.com/openai/demo/pull/12",
+  "raw_input": "@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12",
+  "normalized_patch": "diff --git a/app/services/tickets.py b/app/services/tickets.py ...",
+  "files": [
+    {
+      "file_path": "app/services/tickets.py",
+      "change_type": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "hunks": [
+        {
+          "header": "@@ -10,2 +10,4 @@",
+          "snippet": "+title = payload.get(\"title\").strip()"
+        }
+      ]
+    }
+  ],
+  "policy_citations": [],
+  "source_message_text": "@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12"
+}
+```
+
+Review draft example:
+
+```json
+{
+  "status": "success",
+  "overall_assessment": "The diff is mostly safe, but one new path can fail on malformed input before validation.",
+  "overall_risk": "medium",
+  "findings": [
+    {
+      "title": "Missing null-safe title normalization",
+      "severity": "medium",
+      "summary": "The new branch calls strip() before validating that title is a string.",
+      "file_path": "app/services/tickets.py",
+      "line_start": 12,
+      "line_end": 14,
+      "evidence": [
+        {
+          "evidence_type": "diff_hunk",
+          "label": "app/services/tickets.py @@ -10,2 +10,4 @@",
+          "source_uri": "https://github.com/openai/demo/pull/12#app/services/tickets.py",
+          "snippet": "+title = payload.get(\"title\").strip()"
+        }
+      ]
+    }
+  ],
+  "missing_context": [
+    "The related validation tests were not included in the diff."
+  ],
+  "publish_recommendation": "请先保留为草稿并确认上游是否已经保证 title 一定为字符串。"
+}
+```
+
+Field rules:
+
+- `source_type`: required enum: `github_pr`, `patch_text`
+- `normalized_patch`: required non-empty patch text, or a controlled placeholder when remote patch fetch failed
+- `files`: required normalized file list, may be empty only when the review degrades to insufficient-context
+- `overall_risk`: required enum: `low`, `medium`, `high`
+- `findings`: required array; an empty array is valid when no high-confidence issue is visible
+- `evidence`: optional per-finding evidence refs, but runtime should try to attach diff-hunk evidence whenever a file-scoped finding exists
+- GitHub publication remains approval-gated and is stored as a pending `review_publish` action in the shared action queue
 
 ## 11. Null And Empty Rules
 

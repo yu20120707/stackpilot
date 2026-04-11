@@ -7,13 +7,19 @@ from app.models.contracts import (
     AnalysisRequest,
     AnalysisResultRecord,
     AnalysisResultStatus,
+    CodeReviewDraft,
+    CodeReviewRequest,
     ConfidenceLevel,
+    DiffFileChange,
+    DiffHunk,
     ExternalTaskSyncRequest,
     ExternalTaskTarget,
     ExternalTaskDraft,
     PostmortemDraft,
     PostmortemStatus,
     PostmortemTimelineEntry,
+    ReviewRiskLevel,
+    ReviewSourceType,
     StructuredSummary,
     TodoDraftItem,
     ThreadMessage,
@@ -142,3 +148,49 @@ def test_postmortem_draft_accepts_reviewable_shape() -> None:
 
     assert draft.status is PostmortemStatus.DRAFT
     assert draft.timeline[0].event.startswith("Alerting")
+
+
+def test_code_review_request_accepts_normalized_diff_shape() -> None:
+    request = CodeReviewRequest(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        chat_id="oc_xxx",
+        thread_id="omt_xxx",
+        trigger_message_id="om_xxx",
+        user_id="ou_xxx",
+        source_type=ReviewSourceType.PATCH_TEXT,
+        source_ref="inline_patch",
+        raw_input="diff --git a/app/services/tickets.py b/app/services/tickets.py",
+        normalized_patch="diff --git a/app/services/tickets.py b/app/services/tickets.py",
+        files=[
+            DiffFileChange(
+                file_path="app/services/tickets.py",
+                change_type="modified",
+                additions=2,
+                deletions=0,
+                hunks=[
+                    DiffHunk(
+                        header="@@ -10,2 +10,4 @@",
+                        snippet="+ title = payload.get('title').strip()",
+                    )
+                ],
+            )
+        ],
+        source_message_text="@stackpilot 审一下这个 diff",
+    )
+
+    assert request.trigger_command is TriggerCommand.REVIEW_CODE
+    assert request.files[0].file_path == "app/services/tickets.py"
+
+
+def test_code_review_draft_accepts_structured_findings() -> None:
+    draft = CodeReviewDraft(
+        status="success",
+        overall_assessment="One input-validation path still looks unsafe.",
+        overall_risk=ReviewRiskLevel.MEDIUM,
+        findings=[],
+        missing_context=["No related tests in the diff."],
+        publish_recommendation="Keep as draft before publishing.",
+    )
+
+    assert draft.status.value == "success"
+    assert draft.overall_risk is ReviewRiskLevel.MEDIUM

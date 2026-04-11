@@ -160,3 +160,22 @@ Copy this format for new confirmed decisions.
   - `progress.md`
 - Revisit when:
   - there is a stronger approval UX and enough evidence that approved skills should start steering runtime behavior
+
+### DEC-009
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: AI code review enters through the same Feishu callback surface as incident analysis, but review generation and GitHub publication stay in a separate review flow behind a workflow router and approval-gated publish action.
+- Why: this keeps the external trigger model simple for users while preventing incident-specific orchestration and review-specific publishing logic from collapsing into one service.
+- Alternatives considered:
+  - extend the incident live flow directly with all review responsibilities
+  - create a separate HTTP entrypoint for code review
+- Impacted files:
+  - `app/api/feishu.py`
+  - `app/main.py`
+  - `app/services/workflow_router.py`
+  - `app/services/review/flow.py`
+  - `tech-spec.md`
+  - `progress.md`
+- Revisit when:
+  - a third workflow appears and the current router shape is no longer the cleanest separation boundary

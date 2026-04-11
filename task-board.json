@@ -487,7 +487,7 @@
       "id": "CR-001",
       "title": "Launch AI code review MVP on the shared growth kernel",
       "milestone": "M5",
-      "status": "not_started",
+      "status": "done",
       "priority": 19,
       "depends_on": [
         "GRW-001"
@@ -503,7 +503,29 @@
         "The system returns structured, evidence-backed findings.",
         "Review publication remains approval-gated."
       ],
-      "notes": "The first AI code review milestone should focus on findings and review drafts, not automatic fixes or autonomous code modification."
+      "notes": "Completed with a Feishu-first AI review flow, manual PR or patch trigger parsing, deterministic diff normalization, structured draft findings, optional GitHub PR diff fetch, approval-backed GitHub draft comment publishing, and workflow-router wiring that keeps incident and review flows separate."
+    },
+    {
+      "id": "CR-002",
+      "title": "Grow review reuse safely with policy routing and adoption signals",
+      "milestone": "M6",
+      "status": "not_started",
+      "priority": 20,
+      "depends_on": [
+        "CR-001"
+      ],
+      "deliverables": [
+        "Review policy routing",
+        "Adoption recording",
+        "Review preference memory",
+        "Review skill candidate mining"
+      ],
+      "acceptance_checks": [
+        "Teams can bias review focus toward bug risk, test gaps, or security-oriented checks.",
+        "The system records whether review findings were published, accepted, or ignored.",
+        "Review-specific reusable patterns still remain candidate-first and approval-gated."
+      ],
+      "notes": "The next review milestone should reuse the shared growth kernel to learn stable team preferences and accepted review patterns without enabling autonomous code fixes."
     }
   ]
 }

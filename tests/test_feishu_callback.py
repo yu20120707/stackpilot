@@ -44,11 +44,11 @@ def test_feishu_callback_accepts_supported_manual_trigger() -> None:
 
 
 def test_feishu_callback_accepts_action_approval_command() -> None:
-    class FakeLiveFlow:
+    class FakeWorkflowRouter:
         async def process_trigger(self, *, trigger_command, trigger_event) -> None:
             _ = (trigger_command, trigger_event)
 
-    app.state.services.feishu_live_flow = FakeLiveFlow()
+    app.state.services.workflow_router = FakeWorkflowRouter()
     client = TestClient(app)
     payload = load_fixture("supported_message_event.json")
     payload["event"]["message"]["content"] = json.dumps(
@@ -62,6 +62,27 @@ def test_feishu_callback_accepts_action_approval_command() -> None:
     body = response.json()
     assert body["data"]["status"] == "accepted"
     assert body["data"]["trigger_command"] == "approve_action"
+
+
+def test_feishu_callback_accepts_manual_code_review_trigger() -> None:
+    class FakeWorkflowRouter:
+        async def process_trigger(self, *, trigger_command, trigger_event) -> None:
+            _ = (trigger_command, trigger_event)
+
+    app.state.services.workflow_router = FakeWorkflowRouter()
+    client = TestClient(app)
+    payload = load_fixture("supported_message_event.json")
+    payload["event"]["message"]["content"] = json.dumps(
+        {"text": "@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12"},
+        ensure_ascii=False,
+    )
+
+    response = client.post("/api/feishu/events", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["status"] == "accepted"
+    assert body["data"]["trigger_command"] == "review_code"
 
 
 def test_feishu_callback_ignores_unsupported_group_chatter() -> None:
@@ -93,19 +114,19 @@ def test_feishu_callback_ignores_direct_messages() -> None:
 
 
 def test_feishu_callback_schedules_live_flow_for_accepted_message(monkeypatch) -> None:
-    class FakeLiveFlow:
+    class FakeWorkflowRouter:
         def __init__(self) -> None:
             self.calls: list[tuple[TriggerCommand, str]] = []
 
         async def process_trigger(self, *, trigger_command, trigger_event) -> None:
             self.calls.append((trigger_command, trigger_event.message_id))
 
-    fake_live_flow = FakeLiveFlow()
-    monkeypatch.setattr(app.state.services, "feishu_live_flow", fake_live_flow)
+    fake_router = FakeWorkflowRouter()
+    monkeypatch.setattr(app.state.services, "workflow_router", fake_router)
 
     client = TestClient(app)
     response = client.post("/api/feishu/events", json=load_fixture("supported_message_event.json"))
 
     assert response.status_code == 200
     assert response.json()["data"]["status"] == "accepted"
-    assert fake_live_flow.calls == [(TriggerCommand.ANALYZE_INCIDENT, "om_xxx")]
+    assert fake_router.calls == [(TriggerCommand.ANALYZE_INCIDENT, "om_xxx")]

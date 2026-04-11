@@ -12,6 +12,7 @@ def test_command_parser_exports_expected_command_slots() -> None:
         TriggerCommand.ANALYZE_INCIDENT,
         TriggerCommand.SUMMARIZE_THREAD,
         TriggerCommand.RERUN_ANALYSIS,
+        TriggerCommand.REVIEW_CODE,
     }
 
 
@@ -32,6 +33,25 @@ def test_command_parser_matches_action_approval_commands() -> None:
     assert parse_trigger_command("批准动作 A1") is TriggerCommand.APPROVE_ACTION
     assert parse_trigger_command("@stackpilot 确认动作 a2") is TriggerCommand.APPROVE_ACTION
     assert extract_approved_action_id("执行动作 a3") == "A3"
+
+
+def test_command_parser_matches_manual_code_review_triggers() -> None:
+    assert (
+        parse_trigger_command("@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12")
+        is TriggerCommand.REVIEW_CODE
+    )
+    assert (
+        parse_trigger_command(
+            "@stackpilot 审一下这个 diff ```diff\n"
+            "diff --git a/app/services/tickets.py b/app/services/tickets.py\n"
+            "--- a/app/services/tickets.py\n"
+            "+++ b/app/services/tickets.py\n"
+            "@@ -10,2 +10,4 @@\n"
+            "+title = payload.get('title').strip()\n"
+            "```"
+        )
+        is TriggerCommand.REVIEW_CODE
+    )
 
 
 def test_command_parser_ignores_unsupported_chatter() -> None:

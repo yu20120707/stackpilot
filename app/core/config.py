@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     llm_base_url: str = Field(..., validation_alias="LLM_BASE_URL")
     llm_api_key: str = Field(..., validation_alias="LLM_API_KEY")
     llm_model: str = Field(..., validation_alias="LLM_MODEL")
+    github_api_base_url: str = Field(
+        default="https://api.github.com",
+        validation_alias="GITHUB_API_BASE_URL",
+    )
     knowledge_dir: Path = Field(
         default=Path("data/knowledge"),
         validation_alias="KNOWLEDGE_DIR",
@@ -53,6 +57,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="FEISHU_VERIFICATION_TOKEN",
     )
+    github_token: str | None = Field(
+        default=None,
+        validation_alias="GITHUB_TOKEN",
+    )
     llm_timeout_seconds: int = Field(
         default=30,
         validation_alias="LLM_TIMEOUT_SECONDS",
@@ -61,6 +69,11 @@ class Settings(BaseSettings):
     feishu_timeout_seconds: int = Field(
         default=30,
         validation_alias="FEISHU_TIMEOUT_SECONDS",
+        ge=1,
+    )
+    github_timeout_seconds: int = Field(
+        default=20,
+        validation_alias="GITHUB_TIMEOUT_SECONDS",
         ge=1,
     )
     max_thread_messages: int = Field(
@@ -83,6 +96,7 @@ class Settings(BaseSettings):
         "llm_base_url",
         "llm_api_key",
         "llm_model",
+        "github_api_base_url",
         mode="before",
     )
     @classmethod
@@ -97,7 +111,7 @@ class Settings(BaseSettings):
     def normalize_log_level(cls, value: str) -> str:
         return value.upper()
 
-    @field_validator("feishu_encrypt_key", "feishu_verification_token", mode="before")
+    @field_validator("feishu_encrypt_key", "feishu_verification_token", "github_token", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:
