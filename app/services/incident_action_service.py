@@ -129,14 +129,14 @@ class IncidentActionService:
         scope: ActionScope,
         action_id: str,
         approved_by: str,
-    ) -> str:
+    ) -> tuple[PendingIncidentAction | None, str]:
         action = self.action_queue_service.find_action(scope, action_id)
         if action is None:
-            return self._render_missing_action(action_id)
+            return None, self._render_missing_action(action_id)
         if action.status is not PendingActionStatus.PENDING_APPROVAL:
-            return self._render_existing_action_result(action)
+            return None, self._render_existing_action_result(action)
         if action.action_type is not PendingActionType.TASK_SYNC or action.task_sync_request is None:
-            return f"动作 {action.action_id} 不是可执行的任务同步动作。"
+            return None, f"动作 {action.action_id} 不是可执行的任务同步动作。"
 
         confirmed_request = action.task_sync_request.model_copy(
             update={"confirmed": True}
@@ -158,7 +158,7 @@ class IncidentActionService:
             }
         )
         self.action_queue_service.update_action(scope, updated_action)
-        return self._render_task_sync_result(updated_action, result)
+        return updated_action, self._render_task_sync_result(updated_action, result)
 
     def build_postmortem_reply(
         self,

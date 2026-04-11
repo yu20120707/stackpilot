@@ -50,6 +50,7 @@ These capabilities already exist and remain the base layer.
 | FD-007 | Confirmation-gated task sync contract | Implemented | Keep external task execution under manual approval |
 | FD-008 | Postmortem draft generation | Implemented | Produce reviewable post-incident draft output |
 | FD-009 | Action proposal queue and approval loop | Implemented | Persist reviewable task/postmortem actions and execute them through explicit thread commands |
+| FD-010 | Evidence ledger and draft skill candidates | Implemented | Record visible workflow evidence, audit skill lifecycle events, and mine draft reusable patterns without runtime auto-activation |
 
 ## 5. Incident Workflow Features
 
@@ -100,16 +101,16 @@ User-visible outcome:
 
 These features are shared by incident and code-review workflows.
 
-| ID | Feature | Priority | Summary |
-| --- | --- | --- | --- |
-| GR-001 | Evidence ledger | High | Record factual workflow outcomes, corrections, and acceptance signals |
-| GR-002 | Memory layer | High | Support thread, user, and org-level reusable context |
-| GR-003 | Approval policy | High | Centralize rules for risky actions and behavior changes |
-| GR-004 | Audit log and rollback | High | Make every promotion and execution traceable and reversible |
-| GR-005 | Skill candidate registry | Medium | Store draft reusable workflow patterns |
-| GR-006 | Skill approval lifecycle | Medium | Promote skills through draft, approved, active, retired states |
-| GR-007 | Evaluation and feedback loop | Medium | Score which behaviors helped, failed, or were corrected |
-| GR-008 | Canonical knowledge gateway | High | Keep product truth anchored to approved docs, not chat memory |
+| ID | Feature | Status | Priority | Summary |
+| --- | --- | --- | --- | --- |
+| GR-001 | Evidence ledger | Implemented | High | Record factual visible workflow outcomes, corrections, and acceptance signals |
+| GR-002 | Memory layer | Implemented | High | Support thread, user, and org-level reusable context |
+| GR-003 | Approval policy | Implemented | High | Centralize approval-backed action and skill lifecycle gates |
+| GR-004 | Audit log and rollback | Implemented | High | Make every promotion and execution traceable and reversible |
+| GR-005 | Skill candidate registry | Implemented | Medium | Store draft reusable workflow patterns |
+| GR-006 | Skill approval lifecycle | Implemented | Medium | Promote skills through draft, approved, active, retired states |
+| GR-007 | Evaluation and feedback loop | Planned | Medium | Score which behaviors helped, failed, or were corrected |
+| GR-008 | Canonical knowledge gateway | Planned | High | Keep product truth anchored to approved docs, not chat memory |
 
 ### GR-001 Evidence Ledger
 

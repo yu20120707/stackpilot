@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `ACT-001` complete
-- Overall status: the codebase now has a thread-scoped action proposal queue on top of the memory and retrieval baseline, with summarize-thread proposals, approval commands, and approval-backed task-sync/postmortem write-back wired through the live Feishu flow
-- Recommended next task: `GRW-001 Add controlled growth kernel with recorder and skill candidates`
-- Last known good state: runnable incident-analysis scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident actions, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and `75` passing regression tests
+- Phase: `GRW-001` complete
+- Overall status: the codebase now has a draft-only growth kernel on top of the incident workflow baseline, with append-only interaction evidence, tenant audit logs, deterministic skill-candidate mining, and lifecycle guards that prevent unapproved activation
+- Recommended next task: `CR-001 Launch AI code review MVP on the shared growth kernel`
+- Last known good state: runnable incident-analysis scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident actions, append-only growth evidence, draft skill candidates, live Feishu orchestration wiring, and `84` passing regression tests
 
 ## Canonical Files
 
@@ -33,6 +33,7 @@
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated through a thread-scoped pending action queue
+- skill candidates remain draft-only by default and do not participate in runtime routing yet
 
 ## Open Decisions
 
@@ -211,6 +212,53 @@ Required fields:
   - External task sync still depends on a configured downstream client; without one, approval returns a controlled failure result rather than a real external task
 - Next recommended task:
   - `GRW-001 Add controlled growth kernel with recorder and skill candidates`
+
+### Session 025
+
+- Date: 2026-04-11
+- Primary task: `GRW-001`
+- Objective: add a controlled growth kernel with append-only workflow evidence, tenant audit logs, draft skill candidates, and lifecycle guards that keep skills out of runtime until explicit approval
+- Files changed:
+  - `.env.example`
+  - `README.md`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/__init__.py`
+  - `app/services/kernel/audit_log_service.py`
+  - `app/services/kernel/interaction_recorder.py`
+  - `app/services/skill_miner.py`
+  - `app/services/skill_registry.py`
+  - `data/records/.gitkeep`
+  - `data/skills/.gitkeep`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `schema.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_interaction_recorder.py`
+  - `tests/test_skill_miner.py`
+  - `tests/test_skill_registry.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_interaction_recorder.py tests/test_skill_registry.py tests/test_skill_miner.py tests/test_incident_action_service.py tests/test_feishu_live_flow.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `GRW-001` complete
+  - Visible incident replies and approval results now append deduped thread-scoped evidence plus tenant audit entries
+  - Repeated successful approval-loop patterns now create draft skill candidates with generated `SKILL.md` files under `data/skills`
+  - Skill activation remains blocked until explicit approval through the registry lifecycle, so growth stays draft-only and auditable
+- Blockers:
+  - Draft skill candidates are not yet used to steer runtime behavior or prompt routing
+  - AI code review still has no diff ingestion, structured finding model, or publish flow
+- Next recommended task:
+  - `CR-001 Launch AI code review MVP on the shared growth kernel`
 
 ### Session 001
 

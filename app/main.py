@@ -10,12 +10,16 @@ from app.core.logging import configure_logging
 from app.services.analysis_service import AnalysisService
 from app.services.feishu_live_flow import FeishuLiveFlow
 from app.services.incident_action_service import IncidentActionService
+from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
 from app.services.postmortem_renderer import PostmortemRenderer
 from app.services.postmortem_service import PostmortemService
 from app.services.reply_renderer import ReplyRenderer
+from app.services.skill_miner import SkillMiner
+from app.services.skill_registry import SkillRegistry
 from app.services.task_sync_service import TaskSyncService
 from app.services.thread_reader import ThreadReader
 
@@ -53,6 +57,19 @@ def build_services(settings: Settings) -> AppServices:
     )
     memory_service = MemoryService(settings.resolved_memory_dir)
     action_queue_service = ActionQueueService(settings.resolved_action_dir)
+    audit_log_service = AuditLogService(settings.resolved_records_dir)
+    interaction_recorder = InteractionRecorder(
+        settings.resolved_records_dir,
+        audit_log_service=audit_log_service,
+    )
+    skill_registry = SkillRegistry(
+        settings.resolved_skills_dir,
+        audit_log_service=audit_log_service,
+    )
+    skill_miner = SkillMiner(
+        interaction_recorder=interaction_recorder,
+        skill_registry=skill_registry,
+    )
     thread_reader = ThreadReader(
         feishu_client,
         memory_service=memory_service,
@@ -81,6 +98,8 @@ def build_services(settings: Settings) -> AppServices:
         analysis_service=analysis_service,
         reply_renderer=reply_renderer,
         incident_action_service=incident_action_service,
+        interaction_recorder=interaction_recorder,
+        skill_miner=skill_miner,
     )
     return AppServices(
         settings=settings,

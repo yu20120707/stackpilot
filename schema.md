@@ -404,6 +404,100 @@ Field rules:
 - `task_sync_request`: optional `ExternalTaskSyncRequest`
 - `postmortem_draft`: optional `PostmortemDraft`
 
+## 10.3 Growth Evidence Models
+
+The implemented foundation now includes append-only interaction evidence and draft skill candidates.
+
+Interaction record example:
+
+```json
+{
+  "event_id": "om_xxx-analysis",
+  "correlation_key": "analysis_reply_sent:om_xxx:om_reply_live",
+  "event_type": "analysis_reply_sent",
+  "tenant_id": "oc_xxx",
+  "thread_id": "omt_xxx",
+  "actor_id": "ou_xxx",
+  "occurred_at": "2026-04-11T16:00:00+08:00",
+  "trigger_command": "summarize_thread",
+  "summary_status": "success",
+  "payload": {
+    "headline": "当前更像是一次发布后导致的支付服务异常。",
+    "pending_action_refs": [
+      {
+        "action_id": "A1",
+        "action_type": "task_sync",
+        "status": "pending_approval"
+      }
+    ]
+  }
+}
+```
+
+Field rules:
+
+- `event_id`: required unique event id
+- `correlation_key`: required dedupe key for repeated deliveries
+- `event_type`: required enum: `analysis_reply_sent`, `actions_proposed`, `action_executed`, `reply_send_failed`
+- `tenant_id`: required tenant/chat id
+- `thread_id`: required thread id
+- `actor_id`: required actor id
+- `occurred_at`: required ISO-8601 string
+- `trigger_command`: optional trigger enum
+- `summary_status`: optional result-status enum
+- `action_id`: optional action id
+- `action_type`: optional action-type enum
+- `pattern_key`: optional skill-mining pattern key
+- `payload`: required object
+
+Skill candidate example:
+
+```json
+{
+  "candidate_id": "skill-incident-task-sync-approval",
+  "tenant_id": "oc_xxx",
+  "name": "incident-task-sync-approval-loop",
+  "workflow": "incident",
+  "status": "draft",
+  "source_pattern_key": "incident/task_sync/approval_loop",
+  "trigger_conditions": [
+    "A summarize-thread run produced pending task-sync actions."
+  ],
+  "steps": [
+    "Persist the task-sync action in the thread action queue.",
+    "Wait for an explicit approval command."
+  ],
+  "verification_steps": [
+    "The action status becomes executed in the queue."
+  ],
+  "failure_signals": [
+    "external_task_sync_failed"
+  ],
+  "evidence_event_ids": [
+    "evt-1",
+    "evt-2"
+  ],
+  "created_at": "2026-04-11T16:05:00+08:00",
+  "updated_at": "2026-04-11T16:05:00+08:00"
+}
+```
+
+Field rules:
+
+- `candidate_id`: required candidate identifier
+- `tenant_id`: required tenant id
+- `name`: required display name
+- `workflow`: required workflow label
+- `status`: required enum: `draft`, `approved`, `active`, `retired`
+- `source_pattern_key`: required mined pattern key
+- `trigger_conditions`: required array of strings
+- `steps`: required array of strings
+- `verification_steps`: required array of strings
+- `failure_signals`: required array of strings
+- `evidence_event_ids`: required array of event ids
+- `approved_by`, `approved_at`: optional approval metadata
+- `activated_by`, `activated_at`: optional activation metadata
+
 ## 11. Null And Empty Rules
 
 P0 uses these conventions consistently:

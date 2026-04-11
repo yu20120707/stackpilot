@@ -142,3 +142,21 @@ Copy this format for new confirmed decisions.
   - `README.md`
 - Revisit when:
   - there is a mature approval, rollback, and evaluation system strong enough to justify broader automation
+
+### DEC-008
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: the first growth-kernel implementation may auto-record evidence and auto-create `draft` skill candidates, but it must not auto-activate or runtime-apply those skills.
+- Why: the project needs a credible self-evolution path, but runtime reuse without approval would make the behavior hard to explain and easy to destabilize.
+- Alternatives considered:
+  - immediately let mined skills influence incident routing
+  - postpone all skill persistence until a later milestone
+- Impacted files:
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `tech-spec.md`
+  - `task-board.json`
+  - `progress.md`
+- Revisit when:
+  - there is a stronger approval UX and enough evidence that approved skills should start steering runtime behavior

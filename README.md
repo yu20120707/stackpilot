@@ -12,6 +12,7 @@ The current implemented baseline already covers:
 - task draft generation
 - postmortem draft generation
 - action proposal queue with approval commands
+- append-only evidence recording and draft skill candidates
 
 The next product direction is no longer just "summarize one thread". It is:
 
@@ -24,7 +25,7 @@ The next product direction is no longer just "summarize one thread". It is:
 Think of the repository in two layers:
 
 1. `Implemented foundation`
-   Feishu-first incident discussion analysis with structured replies, source citations, and approval-backed incident action proposals.
+   Feishu-first incident discussion analysis with structured replies, source citations, approval-backed incident action proposals, and a draft-only growth kernel.
 2. `Planned platform`
    A controlled workflow agent that supports incident handling and AI code review on top of shared memory, retrieval, approval, and audit capabilities.
 
@@ -70,7 +71,9 @@ The service starts on [http://127.0.0.1:8000](http://127.0.0.1:8000).
 - `app/services/retrieval`: deterministic retrieval pipeline components
 - `data/knowledge`: local controlled knowledge sources
 - `data/actions`: local persisted pending-action queue
+- `data/records`: append-only workflow evidence and audit logs
 - `data/memory`: local persisted workflow memory
+- `data/skills`: draft skill candidates and lifecycle metadata
 - `tests`: smoke and contract coverage
 
 ## Scope Guardrails

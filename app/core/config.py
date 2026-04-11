@@ -36,6 +36,14 @@ class Settings(BaseSettings):
         default=Path("data/actions"),
         validation_alias="ACTION_DIR",
     )
+    records_dir: Path = Field(
+        default=Path("data/records"),
+        validation_alias="RECORDS_DIR",
+    )
+    skills_dir: Path = Field(
+        default=Path("data/skills"),
+        validation_alias="SKILLS_DIR",
+    )
 
     feishu_encrypt_key: str | None = Field(
         default=None,
@@ -97,7 +105,7 @@ class Settings(BaseSettings):
         normalized = value.strip()
         return normalized or None
 
-    @field_validator("knowledge_dir", "memory_dir", "action_dir", mode="before")
+    @field_validator("knowledge_dir", "memory_dir", "action_dir", "records_dir", "skills_dir", mode="before")
     @classmethod
     def normalize_path_dir(cls, value: str | Path, info) -> Path:  # noqa: ANN001
         if isinstance(value, Path):
@@ -108,6 +116,8 @@ class Settings(BaseSettings):
                 "knowledge_dir": Path("data/knowledge"),
                 "memory_dir": Path("data/memory"),
                 "action_dir": Path("data/actions"),
+                "records_dir": Path("data/records"),
+                "skills_dir": Path("data/skills"),
             }
             return defaults[info.field_name]
         return Path(normalized)
@@ -123,6 +133,14 @@ class Settings(BaseSettings):
     @property
     def resolved_action_dir(self) -> Path:
         return self.action_dir.resolve()
+
+    @property
+    def resolved_records_dir(self) -> Path:
+        return self.records_dir.resolve()
+
+    @property
+    def resolved_skills_dir(self) -> Path:
+        return self.skills_dir.resolve()
 
 
 @lru_cache

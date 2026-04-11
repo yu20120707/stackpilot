@@ -203,11 +203,12 @@ Expected new services over time:
 
 - `app/services/kernel/memory_service.py`
 - `app/services/kernel/action_queue_service.py`
+- `app/services/kernel/audit_log_service.py`
+- `app/services/kernel/interaction_recorder.py`
 - `app/services/retrieval/planner.py`
 - `app/services/retrieval/router.py`
 - `app/services/retrieval/ranker.py`
 - `app/services/incident_action_service.py`
-- `app/services/interaction_recorder.py`
 - `app/services/skill_miner.py`
 - `app/services/skill_registry.py`
 - `app/services/approval_policy.py`

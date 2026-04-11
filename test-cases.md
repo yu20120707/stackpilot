@@ -47,6 +47,8 @@ Recommended fixture types:
 | T-015 | Weak evidence filtering | Automated | Post-P0 |
 | T-016 | Pending action persistence | Automated | Post-P0 |
 | T-017 | Approval-backed incident action execution | Automated | Post-P0 |
+| T-018 | Interaction evidence recording | Automated | Post-P0 |
+| T-019 | Draft skill candidate mining | Automated | Post-P0 |
 
 ## 4. Detailed Test Cases
 
@@ -341,6 +343,39 @@ Expected result:
 - Task-sync actions execute with `confirmed = true`
 - Postmortem actions write the rendered draft back to the same thread
 - Repeated approval does not create duplicate side effects
+
+### T-018 Interaction Evidence Recording
+
+Goal:
+
+- Confirm visible workflow outcomes are appended to a thread-scoped evidence ledger and tenant audit log.
+
+Input:
+
+- A successful summarize-thread reply
+- A failed reply-send attempt
+
+Expected result:
+
+- Successful visible replies append `analysis_reply_sent` and, when applicable, `actions_proposed`
+- Reply-send failures append `reply_send_failed` only
+- Repeated delivery with the same correlation key does not duplicate evidence
+
+### T-019 Draft Skill Candidate Mining
+
+Goal:
+
+- Confirm repeated successful approval-loop patterns create draft-only skill candidates.
+
+Input:
+
+- At least two successful `action_executed` records with the same supported pattern key
+
+Expected result:
+
+- A draft skill candidate is written under `data/skills`
+- Lifecycle audit entries record candidate creation
+- Activation is rejected until explicit approval occurs through the registry path
 
 ## 5. Manual Verification Checklist
 

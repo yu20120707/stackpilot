@@ -465,7 +465,7 @@
       "id": "GRW-001",
       "title": "Add controlled growth kernel with recorder and skill candidates",
       "milestone": "M4",
-      "status": "not_started",
+      "status": "done",
       "priority": 18,
       "depends_on": [
         "ACT-001"
@@ -481,7 +481,7 @@
         "Reusable patterns can be stored as draft skill candidates.",
         "No candidate skill becomes active without approval."
       ],
-      "notes": "This is the self-evolution layer, but implemented as controlled growth rather than autonomous self-modification."
+      "notes": "Completed with append-only thread evidence, tenant audit logs, a draft-only skill registry under data/skills, deterministic pattern mining for repeated approval loops, and lifecycle guards that prevent activation before approval."
     },
     {
       "id": "CR-001",

@@ -140,19 +140,56 @@ async def test_incident_action_service_executes_confirmed_task_sync(tmp_path: Pa
     )
     service.persist_actions(scope=scope, actions=actions)
 
-    reply_text = await service.execute_task_sync_action(
+    executed_action, reply_text = await service.execute_task_sync_action(
         scope=scope,
         action_id="A1",
         approved_by="ou_reviewer",
     )
 
     persisted_action = action_queue_service.find_action(scope, "A1")
+    assert executed_action is not None
     assert persisted_action is not None
     assert persisted_action.status.value == "executed"
     assert persisted_action.task_sync_request is not None
     assert persisted_action.task_sync_request.confirmed is True
     assert fake_client.calls == [True]
     assert "TASK-1" in reply_text or "https://tasks.example.local/1" in reply_text
+
+
+@pytest.mark.anyio
+async def test_incident_action_service_duplicate_approval_is_idempotent(tmp_path: Path) -> None:
+    prompt_path = tmp_path / "postmortem_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    fake_client = FakeTaskSyncClient()
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=TaskSyncService(task_sync_client=fake_client),
+        postmortem_service=PostmortemService(FakeLLMClient(), prompt_path=prompt_path),
+        postmortem_renderer=PostmortemRenderer(),
+    )
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    actions = await service.prepare_actions(
+        scope=scope,
+        request=build_request(),
+        summary=build_summary(),
+    )
+    service.persist_actions(scope=scope, actions=actions)
+
+    await service.execute_task_sync_action(
+        scope=scope,
+        action_id="A1",
+        approved_by="ou_reviewer",
+    )
+    executed_action, reply_text = await service.execute_task_sync_action(
+        scope=scope,
+        action_id="A1",
+        approved_by="ou_reviewer",
+    )
+
+    assert executed_action is None
+    assert "无需重复批准" in reply_text
+    assert fake_client.calls == [True]
 
 
 @pytest.mark.anyio

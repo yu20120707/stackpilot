@@ -17,6 +17,7 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - explicit local thread memory for workflow continuity
 - deterministic retrieval planning, routing, and evidence ranking
 - pending incident action persistence with approval-backed execution
+- append-only evidence recording and draft skill candidate generation
 
 Still out of scope for the current foundation:
 
@@ -70,9 +71,13 @@ app/
     postmortem_renderer.py
     postmortem_service.py
     reply_renderer.py
+    skill_miner.py
+    skill_registry.py
     task_sync_service.py
     kernel/
       action_queue_service.py
+      audit_log_service.py
+      interaction_recorder.py
       memory_service.py
     retrieval/
       planner.py
@@ -88,6 +93,8 @@ data/
   actions/
   knowledge/
   memory/
+  records/
+  skills/
 ```
 
 Module ownership:
@@ -124,6 +131,8 @@ Optional for P0:
 - `MAX_KNOWLEDGE_HITS`
 - `ACTION_DIR`
 - `MEMORY_DIR`
+- `RECORDS_DIR`
+- `SKILLS_DIR`
 
 Default behavior:
 
@@ -133,6 +142,8 @@ Default behavior:
 - `MAX_KNOWLEDGE_HITS` defaults to `5`
 - `ACTION_DIR` defaults to `data/actions`
 - `MEMORY_DIR` defaults to `data/memory`
+- `RECORDS_DIR` defaults to `data/records`
+- `SKILLS_DIR` defaults to `data/skills`
 
 ## 5. External Routes
 
@@ -209,6 +220,13 @@ Approval-backed incident actions move through this order:
 4. The selected task-sync or postmortem action executes under explicit approval
 5. The result is written back to the same thread
 
+Growth-kernel recording currently moves through this order:
+
+1. A visible analysis reply or approval result is sent successfully
+2. The interaction recorder appends thread-scoped evidence and tenant-scoped audit summaries
+3. The skill miner evaluates repeated successful approval-loop patterns for the tenant
+4. If the threshold is met, a draft skill candidate is written under `data/skills`
+
 The route layer should not contain business logic beyond validation and normalization.
 
 ## 8. Knowledge Source Rules
@@ -271,6 +289,8 @@ Allowed in P0:
 - local action queue files under `data/actions`
 - local knowledge files under `data/knowledge`
 - local thread memory files under `data/memory`
+- local evidence and audit files under `data/records`
+- local skill candidate files under `data/skills`
 - application logs
 
 Not required in P0:

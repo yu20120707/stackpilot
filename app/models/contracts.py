@@ -67,6 +67,20 @@ class PendingActionStatus(str, Enum):
     EXECUTION_FAILED = "execution_failed"
 
 
+class InteractionEventType(str, Enum):
+    ANALYSIS_REPLY_SENT = "analysis_reply_sent"
+    ACTIONS_PROPOSED = "actions_proposed"
+    ACTION_EXECUTED = "action_executed"
+    REPLY_SEND_FAILED = "reply_send_failed"
+
+
+class SkillCandidateStatus(str, Enum):
+    DRAFT = "draft"
+    APPROVED = "approved"
+    ACTIVE = "active"
+    RETIRED = "retired"
+
+
 NonEmptyText: TypeAlias = str
 
 
@@ -280,6 +294,59 @@ class ActionQueueState(BaseModel):
     schema_version: int = Field(default=1, ge=1)
     updated_at: datetime
     actions: list[PendingIncidentAction] = Field(default_factory=list)
+
+
+class InteractionRecord(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    event_id: NonEmptyText = Field(min_length=1)
+    correlation_key: NonEmptyText = Field(min_length=1)
+    event_type: InteractionEventType
+    tenant_id: NonEmptyText = Field(min_length=1)
+    thread_id: NonEmptyText = Field(min_length=1)
+    actor_id: NonEmptyText = Field(min_length=1)
+    occurred_at: datetime
+    trigger_command: TriggerCommand | None = None
+    summary_status: AnalysisResultStatus | None = None
+    action_id: str | None = None
+    action_type: PendingActionType | None = None
+    pattern_key: str | None = None
+    payload: dict[str, object] = Field(default_factory=dict)
+
+
+class AuditLogEntry(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    event_id: NonEmptyText = Field(min_length=1)
+    event_type: NonEmptyText = Field(min_length=1)
+    tenant_id: NonEmptyText = Field(min_length=1)
+    thread_id: NonEmptyText = Field(min_length=1)
+    occurred_at: datetime
+    summary: NonEmptyText = Field(min_length=1)
+    related_action_id: str | None = None
+
+
+class SkillCandidate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    schema_version: int = Field(default=1, ge=1)
+    candidate_id: NonEmptyText = Field(min_length=1)
+    tenant_id: NonEmptyText = Field(min_length=1)
+    name: NonEmptyText = Field(min_length=1)
+    workflow: NonEmptyText = Field(min_length=1)
+    status: SkillCandidateStatus
+    source_pattern_key: NonEmptyText = Field(min_length=1)
+    trigger_conditions: list[NonEmptyText] = Field(default_factory=list)
+    steps: list[NonEmptyText] = Field(default_factory=list)
+    verification_steps: list[NonEmptyText] = Field(default_factory=list)
+    failure_signals: list[NonEmptyText] = Field(default_factory=list)
+    evidence_event_ids: list[NonEmptyText] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    activated_by: str | None = None
+    activated_at: datetime | None = None
 
 
 ReplyPayload: TypeAlias = StructuredSummary | TemporaryFailureReply

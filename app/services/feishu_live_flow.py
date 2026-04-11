@@ -5,8 +5,11 @@ from datetime import datetime, timezone
 from app.clients.feishu_client import FeishuClient
 from app.core.logging import get_logger
 from app.models.contracts import (
+    ActionScope,
     AnalysisRequest,
     AnalysisResultStatus,
+    InteractionEventType,
+    InteractionRecord,
     NormalizedFeishuMessageEvent,
     PendingActionType,
     PendingIncidentAction,
@@ -19,9 +22,11 @@ from app.models.contracts import (
 from app.services.analysis_service import AnalysisService
 from app.services.command_parser import extract_approved_action_id
 from app.services.incident_action_service import IncidentActionService
+from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
 from app.services.reply_renderer import ReplyRenderer
+from app.services.skill_miner import SkillMiner
 from app.services.thread_reader import ThreadReader
 
 logger = get_logger(__name__)
@@ -38,6 +43,8 @@ class FeishuLiveFlow:
         reply_renderer: ReplyRenderer,
         memory_service: MemoryService | None = None,
         incident_action_service: IncidentActionService | None = None,
+        interaction_recorder: InteractionRecorder | None = None,
+        skill_miner: SkillMiner | None = None,
     ) -> None:
         self.feishu_client = feishu_client
         self.thread_reader = thread_reader
@@ -46,6 +53,8 @@ class FeishuLiveFlow:
         self.analysis_service = analysis_service
         self.reply_renderer = reply_renderer
         self.incident_action_service = incident_action_service
+        self.interaction_recorder = interaction_recorder
+        self.skill_miner = skill_miner
 
     async def process_trigger(
         self,
@@ -151,6 +160,14 @@ class FeishuLiveFlow:
                 analysis_request.trigger_message_id,
                 send_result.error_message,
             )
+            self._record_reply_send_failure(
+                scope=self._resolve_record_scope(trigger_event),
+                trigger_event=trigger_event,
+                trigger_command=trigger_command,
+                reply_payload=reply_payload,
+                pending_actions=pending_actions,
+                error_message=send_result.error_message,
+            )
             return
 
         logger.info(
@@ -158,6 +175,14 @@ class FeishuLiveFlow:
             analysis_request.thread_id,
             analysis_request.trigger_message_id,
             send_result.reply_message_id,
+        )
+        self._record_analysis_events(
+            scope=self._resolve_record_scope(trigger_event),
+            analysis_request=analysis_request,
+            trigger_command=trigger_command,
+            reply_payload=reply_payload,
+            reply_message_id=send_result.reply_message_id,
+            pending_actions=pending_actions,
         )
         self._persist_thread_state(
             trigger_event=trigger_event,
@@ -244,17 +269,53 @@ class FeishuLiveFlow:
                     action=pending_action,
                     approved_by=trigger_event.sender_id,
                 )
+                updated_action = self.incident_action_service.action_queue_service.find_action(
+                    scope,
+                    action_id,
+                )
+                if updated_action is not None:
+                    self._record_action_execution(
+                        scope=scope,
+                        trigger_event=trigger_event,
+                        action=updated_action,
+                    )
+            elif not send_result.success:
+                self._record_reply_send_failure(
+                    scope=scope,
+                    trigger_event=trigger_event,
+                    trigger_command=TriggerCommand.APPROVE_ACTION,
+                    reply_payload=None,
+                    pending_actions=[],
+                    error_message=send_result.error_message,
+                    action_id=action_id,
+                )
             return
 
-        reply_text = await self.incident_action_service.execute_task_sync_action(
+        executed_action, reply_text = await self.incident_action_service.execute_task_sync_action(
             scope=scope,
             action_id=action_id,
             approved_by=trigger_event.sender_id,
         )
-        await self._send_action_reply(
+        send_result = await self._send_action_reply(
             trigger_event=trigger_event,
             reply_text=reply_text,
         )
+        if send_result.success and executed_action is not None:
+            self._record_action_execution(
+                scope=scope,
+                trigger_event=trigger_event,
+                action=executed_action,
+            )
+        elif not send_result.success:
+            self._record_reply_send_failure(
+                scope=scope,
+                trigger_event=trigger_event,
+                trigger_command=TriggerCommand.APPROVE_ACTION,
+                reply_payload=None,
+                pending_actions=[],
+                error_message=send_result.error_message,
+                action_id=action_id,
+            )
 
     async def _send_action_reply(
         self,
@@ -335,3 +396,217 @@ class FeishuLiveFlow:
                 analysis_request.thread_id,
                 analysis_request.trigger_message_id,
             )
+
+    def _record_analysis_events(
+        self,
+        *,
+        scope: ActionScope,
+        analysis_request: AnalysisRequest,
+        trigger_command: TriggerCommand,
+        reply_payload: StructuredSummary | TemporaryFailureReply,
+        reply_message_id: str | None,
+        pending_actions: list[PendingIncidentAction],
+    ) -> None:
+        if self.interaction_recorder is None:
+            return
+
+        analysis_record = InteractionRecord(
+            event_id=self._build_event_id(
+                trigger_message_id=analysis_request.trigger_message_id,
+                suffix="analysis",
+            ),
+            correlation_key=self._build_correlation_key(
+                event_type=InteractionEventType.ANALYSIS_REPLY_SENT,
+                trigger_message_id=analysis_request.trigger_message_id,
+                reply_message_id=reply_message_id,
+            ),
+            event_type=InteractionEventType.ANALYSIS_REPLY_SENT,
+            tenant_id=scope.tenant_id,
+            thread_id=scope.thread_id,
+            actor_id=analysis_request.user_id,
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=trigger_command,
+            summary_status=getattr(reply_payload, "status", None),
+            payload=self._build_analysis_payload(reply_payload, pending_actions),
+        )
+        self.interaction_recorder.record(scope, analysis_record)
+
+        if not pending_actions:
+            return
+
+        proposal_record = InteractionRecord(
+            event_id=self._build_event_id(
+                trigger_message_id=analysis_request.trigger_message_id,
+                suffix="actions",
+            ),
+            correlation_key=self._build_correlation_key(
+                event_type=InteractionEventType.ACTIONS_PROPOSED,
+                trigger_message_id=analysis_request.trigger_message_id,
+                action_id="-".join(action.action_id for action in pending_actions),
+            ),
+            event_type=InteractionEventType.ACTIONS_PROPOSED,
+            tenant_id=scope.tenant_id,
+            thread_id=scope.thread_id,
+            actor_id=analysis_request.user_id,
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=trigger_command,
+            summary_status=getattr(reply_payload, "status", None),
+            payload={
+                "action_count": len(pending_actions),
+                "action_refs": [
+                    {
+                        "action_id": action.action_id,
+                        "action_type": action.action_type.value,
+                        "status": action.status.value,
+                    }
+                    for action in pending_actions
+                ],
+            },
+        )
+        self.interaction_recorder.record(scope, proposal_record)
+
+    def _record_action_execution(
+        self,
+        *,
+        scope: ActionScope,
+        trigger_event: NormalizedFeishuMessageEvent,
+        action: PendingIncidentAction,
+    ) -> None:
+        if self.interaction_recorder is None:
+            return
+
+        record = InteractionRecord(
+            event_id=self._build_event_id(
+                trigger_message_id=trigger_event.message_id,
+                suffix=f"action-{action.action_id.lower()}",
+            ),
+            correlation_key=self._build_correlation_key(
+                event_type=InteractionEventType.ACTION_EXECUTED,
+                trigger_message_id=trigger_event.message_id,
+                action_id=action.action_id,
+            ),
+            event_type=InteractionEventType.ACTION_EXECUTED,
+            tenant_id=scope.tenant_id,
+            thread_id=scope.thread_id,
+            actor_id=trigger_event.sender_id,
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=TriggerCommand.APPROVE_ACTION,
+            action_id=action.action_id,
+            action_type=action.action_type,
+            pattern_key=self._pattern_key_for(action.action_type),
+            payload={
+                "execution_status": (
+                    "executed"
+                    if action.status.value == "executed"
+                    else "execution_failed"
+                ),
+                "execution_message": action.execution_message or "",
+                "action_title": action.title,
+            },
+        )
+        self.interaction_recorder.record(scope, record)
+
+        if (
+            self.skill_miner is not None
+            and action.status.value == "executed"
+        ):
+            self.skill_miner.evaluate_tenant(scope.tenant_id)
+
+    def _record_reply_send_failure(
+        self,
+        *,
+        scope: ActionScope,
+        trigger_event: NormalizedFeishuMessageEvent,
+        trigger_command: TriggerCommand,
+        reply_payload: StructuredSummary | TemporaryFailureReply | None,
+        pending_actions: list[PendingIncidentAction],
+        error_message: str | None,
+        action_id: str | None = None,
+    ) -> None:
+        if self.interaction_recorder is None:
+            return
+
+        record = InteractionRecord(
+            event_id=self._build_event_id(
+                trigger_message_id=trigger_event.message_id,
+                suffix="reply-failed",
+            ),
+            correlation_key=self._build_correlation_key(
+                event_type=InteractionEventType.REPLY_SEND_FAILED,
+                trigger_message_id=trigger_event.message_id,
+                action_id=action_id,
+            ),
+            event_type=InteractionEventType.REPLY_SEND_FAILED,
+            tenant_id=scope.tenant_id,
+            thread_id=scope.thread_id,
+            actor_id=trigger_event.sender_id,
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=trigger_command,
+            summary_status=getattr(reply_payload, "status", None),
+            action_id=action_id,
+            payload={
+                "error_message": error_message or "unknown_reply_send_failure",
+                "pending_action_ids": [action.action_id for action in pending_actions],
+            },
+        )
+        self.interaction_recorder.record(scope, record)
+
+    def _build_analysis_payload(
+        self,
+        reply_payload: StructuredSummary | TemporaryFailureReply,
+        pending_actions: list[PendingIncidentAction],
+    ) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "headline": getattr(reply_payload, "current_assessment", None)
+            or getattr(reply_payload, "headline", None)
+            or "",
+            "known_facts": reply_payload.known_facts[:3],
+            "missing_information": reply_payload.missing_information[:3],
+            "citation_refs": [
+                {
+                    "label": citation.label,
+                    "source_uri": citation.source_uri,
+                }
+                for citation in reply_payload.citations[:3]
+            ],
+            "pending_action_refs": [
+                {
+                    "action_id": action.action_id,
+                    "action_type": action.action_type.value,
+                    "status": action.status.value,
+                }
+                for action in pending_actions
+            ],
+        }
+        if isinstance(reply_payload, StructuredSummary):
+            payload["conclusion_summary"] = reply_payload.conclusion_summary or ""
+        return payload
+
+    def _resolve_record_scope(self, trigger_event: NormalizedFeishuMessageEvent) -> ActionScope:
+        if self.incident_action_service is not None:
+            return self.incident_action_service.action_queue_service.resolve_scope(trigger_event)
+        return ActionScope(
+            tenant_id=trigger_event.chat_id,
+            thread_id=trigger_event.thread_id,
+        )
+
+    def _build_event_id(self, *, trigger_message_id: str, suffix: str) -> str:
+        return f"{trigger_message_id}-{suffix}"
+
+    def _build_correlation_key(
+        self,
+        *,
+        event_type: InteractionEventType,
+        trigger_message_id: str,
+        reply_message_id: str | None = None,
+        action_id: str | None = None,
+    ) -> str:
+        parts = [event_type.value, trigger_message_id]
+        if reply_message_id:
+            parts.append(reply_message_id)
+        if action_id:
+            parts.append(action_id)
+        return ":".join(parts)
+
+    def _pattern_key_for(self, action_type: PendingActionType) -> str:
+        return f"incident/{action_type.value}/approval_loop"
