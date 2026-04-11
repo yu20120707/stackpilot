@@ -443,7 +443,7 @@
       "id": "ACT-001",
       "title": "Add action proposal queue and approval-backed incident actions",
       "milestone": "M3",
-      "status": "not_started",
+      "status": "done",
       "priority": 17,
       "depends_on": [
         "RET-001"
@@ -459,7 +459,7 @@
         "High-risk actions require explicit user confirmation.",
         "Approved actions can be executed and written back to the thread."
       ],
-      "notes": "This milestone closes the incident workflow loop and makes the project materially stronger for interviews."
+      "notes": "Completed with a file-backed thread-scoped action queue under app/services/kernel, summarize-thread action proposal creation, explicit approval commands like '批准动作 A1', and approval-backed task-sync/postmortem write-back coverage."
     },
     {
       "id": "GRW-001",

@@ -45,6 +45,7 @@ Supported `trigger_command` values in P0:
 - `analyze_incident`
 - `summarize_thread`
 - `rerun_analysis`
+- `approve_action`
 
 ## 2.1 Follow-Up Context
 
@@ -234,6 +235,14 @@ Minimum successful reply layout:
 - ...
 ```
 
+When approval-backed actions are available, the reply may append:
+
+```text
+待审批动作：
+- [A1] ...
+  批准命令：批准动作 A1
+```
+
 Minimum failure reply layout:
 
 ```text
@@ -340,6 +349,60 @@ Field rules:
 - `updated_at`: required ISO-8601 string
 - `known_facts`: required array of strings
 - `open_questions`: required array of strings
+
+## 10.2 Pending Action Models
+
+The implemented foundation now includes a thread-scoped pending action queue.
+
+Pending action example:
+
+```json
+{
+  "action_id": "A1",
+  "action_type": "task_sync",
+  "status": "pending_approval",
+  "title": "同步待办草稿",
+  "preview": "将同步 3 个待办草稿。预览：补充错误日志；确认最近一次发布内容；等 3 项",
+  "source_thread_id": "omt_xxx",
+  "created_by": "ou_xxx",
+  "created_at": "2026-04-11T15:00:00+08:00",
+  "updated_at": "2026-04-11T15:00:00+08:00",
+  "task_sync_request": {
+    "target": "generic",
+    "source_thread_id": "omt_xxx",
+    "requested_by": "ou_xxx",
+    "task_drafts": [
+      {
+        "title": "补充错误日志",
+        "description": "Source thread: omt_xxx\nTask draft: 补充错误日志",
+        "labels": [
+          "incident-draft"
+        ],
+        "citations": []
+      }
+    ],
+    "require_confirmation": true,
+    "confirmed": false
+  }
+}
+```
+
+Field rules:
+
+- `action_id`: required thread-local identifier such as `A1`
+- `action_type`: required enum: `task_sync` or `postmortem_draft`
+- `status`: required enum: `pending_approval`, `executed`, `execution_failed`
+- `title`: required string
+- `preview`: required string shown before execution
+- `source_thread_id`: required thread id
+- `created_by`: required requester id
+- `created_at`: required ISO-8601 string
+- `updated_at`: required ISO-8601 string
+- `approved_by`: optional approver id
+- `approved_at`: optional ISO-8601 string
+- `execution_message`: optional execution result marker
+- `task_sync_request`: optional `ExternalTaskSyncRequest`
+- `postmortem_draft`: optional `PostmortemDraft`
 
 ## 11. Null And Empty Rules
 

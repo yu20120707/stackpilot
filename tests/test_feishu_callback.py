@@ -43,6 +43,27 @@ def test_feishu_callback_accepts_supported_manual_trigger() -> None:
     assert body["data"]["message_event"]["mentions_bot"] is True
 
 
+def test_feishu_callback_accepts_action_approval_command() -> None:
+    class FakeLiveFlow:
+        async def process_trigger(self, *, trigger_command, trigger_event) -> None:
+            _ = (trigger_command, trigger_event)
+
+    app.state.services.feishu_live_flow = FakeLiveFlow()
+    client = TestClient(app)
+    payload = load_fixture("supported_message_event.json")
+    payload["event"]["message"]["content"] = json.dumps(
+        {"text": "@stackpilot 批准动作 A1"},
+        ensure_ascii=False,
+    )
+
+    response = client.post("/api/feishu/events", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["status"] == "accepted"
+    assert body["data"]["trigger_command"] == "approve_action"
+
+
 def test_feishu_callback_ignores_unsupported_group_chatter() -> None:
     client = TestClient(app)
 

@@ -9,9 +9,14 @@ from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.services.analysis_service import AnalysisService
 from app.services.feishu_live_flow import FeishuLiveFlow
+from app.services.incident_action_service import IncidentActionService
+from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
+from app.services.postmortem_renderer import PostmortemRenderer
+from app.services.postmortem_service import PostmortemService
 from app.services.reply_renderer import ReplyRenderer
+from app.services.task_sync_service import TaskSyncService
 from app.services.thread_reader import ThreadReader
 
 
@@ -47,6 +52,7 @@ def build_services(settings: Settings) -> AppServices:
         )
     )
     memory_service = MemoryService(settings.resolved_memory_dir)
+    action_queue_service = ActionQueueService(settings.resolved_action_dir)
     thread_reader = ThreadReader(
         feishu_client,
         memory_service=memory_service,
@@ -57,6 +63,15 @@ def build_services(settings: Settings) -> AppServices:
         max_hits=settings.max_knowledge_hits,
     )
     analysis_service = AnalysisService(llm_client)
+    task_sync_service = TaskSyncService()
+    postmortem_service = PostmortemService(llm_client)
+    postmortem_renderer = PostmortemRenderer()
+    incident_action_service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=task_sync_service,
+        postmortem_service=postmortem_service,
+        postmortem_renderer=postmortem_renderer,
+    )
     reply_renderer = ReplyRenderer()
     feishu_live_flow = FeishuLiveFlow(
         feishu_client=feishu_client,
@@ -65,6 +80,7 @@ def build_services(settings: Settings) -> AppServices:
         knowledge_base=knowledge_base,
         analysis_service=analysis_service,
         reply_renderer=reply_renderer,
+        incident_action_service=incident_action_service,
     )
     return AppServices(
         settings=settings,

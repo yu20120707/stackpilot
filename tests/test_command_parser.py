@@ -1,6 +1,7 @@
 from app.models.contracts import TriggerCommand
 from app.services.command_parser import (
     SUPPORTED_TRIGGER_PHRASES,
+    extract_approved_action_id,
     normalize_message_text,
     parse_trigger_command,
 )
@@ -25,6 +26,12 @@ def test_command_parser_matches_broader_natural_language_triggers() -> None:
     assert parse_trigger_command("@stackpilot 分析一下问题在哪") is TriggerCommand.ANALYZE_INCIDENT
     assert parse_trigger_command("@stackpilot 总结一下当前结论") is TriggerCommand.SUMMARIZE_THREAD
     assert parse_trigger_command("@stackpilot 再分析一下") is TriggerCommand.RERUN_ANALYSIS
+
+
+def test_command_parser_matches_action_approval_commands() -> None:
+    assert parse_trigger_command("批准动作 A1") is TriggerCommand.APPROVE_ACTION
+    assert parse_trigger_command("@stackpilot 确认动作 a2") is TriggerCommand.APPROVE_ACTION
+    assert extract_approved_action_id("执行动作 a3") == "A3"
 
 
 def test_command_parser_ignores_unsupported_chatter() -> None:

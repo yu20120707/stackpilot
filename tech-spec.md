@@ -16,6 +16,7 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - confirmation-gated task-sync contract
 - explicit local thread memory for workflow continuity
 - deterministic retrieval planning, routing, and evidence ranking
+- pending incident action persistence with approval-backed execution
 
 Still out of scope for the current foundation:
 
@@ -65,8 +66,13 @@ app/
     thread_reader.py
     knowledge_base.py
     analysis_service.py
+    incident_action_service.py
+    postmortem_renderer.py
+    postmortem_service.py
     reply_renderer.py
+    task_sync_service.py
     kernel/
+      action_queue_service.py
       memory_service.py
     retrieval/
       planner.py
@@ -79,6 +85,7 @@ tests/
   test_command_parser.py
   test_analysis_contracts.py
 data/
+  actions/
   knowledge/
   memory/
 ```
@@ -115,6 +122,7 @@ Optional for P0:
 - `LLM_TIMEOUT_SECONDS`
 - `MAX_THREAD_MESSAGES`
 - `MAX_KNOWLEDGE_HITS`
+- `ACTION_DIR`
 - `MEMORY_DIR`
 
 Default behavior:
@@ -123,6 +131,7 @@ Default behavior:
 - `LLM_TIMEOUT_SECONDS` defaults to `30`
 - `MAX_THREAD_MESSAGES` defaults to `50`
 - `MAX_KNOWLEDGE_HITS` defaults to `5`
+- `ACTION_DIR` defaults to `data/actions`
 - `MEMORY_DIR` defaults to `data/memory`
 
 ## 5. External Routes
@@ -159,6 +168,7 @@ P0 supported manual commands:
 - `分析一下这次故障`
 - `帮我总结当前结论`
 - `基于最新信息重试`
+- `批准动作 A1`
 
 The route must hand off a normalized `AnalysisRequest` object to the service layer.
 
@@ -186,9 +196,18 @@ One incident-analysis request currently moves through the system in this order:
 4. The thread reader loads the current thread or message context
 5. The knowledge service loads or queries local knowledge documents
 6. The analysis service builds the LLM input and requests a structured summary
-7. The reply renderer converts the structured result into user-facing Feishu text
-8. The Feishu client posts the reply back to the same discussion context
-9. The thread memory service persists the latest successful structured summary state
+7. For summarize-thread success cases, the incident-action service prepares task-sync and postmortem proposals and stores them in the action queue
+8. The reply renderer converts the structured result into user-facing Feishu text
+9. The Feishu client posts the reply back to the same discussion context
+10. The thread memory service persists the latest successful structured summary state
+
+Approval-backed incident actions move through this order:
+
+1. Feishu callback accepts `批准动作 A1`
+2. The command parser extracts the action id from the thread message
+3. The incident-action service resolves the pending action from the thread-scoped queue
+4. The selected task-sync or postmortem action executes under explicit approval
+5. The result is written back to the same thread
 
 The route layer should not contain business logic beyond validation and normalization.
 
@@ -249,6 +268,7 @@ P0 has no mandatory database requirement.
 
 Allowed in P0:
 
+- local action queue files under `data/actions`
 - local knowledge files under `data/knowledge`
 - local thread memory files under `data/memory`
 - application logs
@@ -277,7 +297,7 @@ P0 should be considered implementable only if the following can be tested:
 This foundation spec still does not define:
 
 - automatic incident detection
-- unapproved task execution
+- autonomous task execution without approval
 - external vector-backed retrieval infrastructure
 - AI code review publish flow
 

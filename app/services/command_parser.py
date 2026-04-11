@@ -42,6 +42,10 @@ MENTION_TAG_PATTERN = re.compile(r"<at\b[^>]*>.*?</at>", re.IGNORECASE)
 MENTION_PLACEHOLDER_PATTERN = re.compile(r"@_user_\d+", re.IGNORECASE)
 PLAIN_AT_MENTION_PATTERN = re.compile(r"(?<!\S)@[^\s]+")
 WHITESPACE_PATTERN = re.compile(r"\s+")
+APPROVE_ACTION_PATTERN = re.compile(
+    r"^(?:确认|批准|执行)(?:执行)?动作\s+([a-z0-9_-]+)$",
+    re.IGNORECASE,
+)
 
 
 def parse_trigger_command(message_text: str) -> TriggerCommand | None:
@@ -49,6 +53,9 @@ def parse_trigger_command(message_text: str) -> TriggerCommand | None:
 
     if not normalized_text:
         return None
+
+    if extract_approved_action_id(normalized_text) is not None:
+        return TriggerCommand.APPROVE_ACTION
 
     collapsed_text = collapse_for_matching(normalized_text)
 
@@ -70,6 +77,14 @@ def normalize_message_text(message_text: str) -> str:
 def collapse_for_matching(text: str) -> str:
     normalized = normalize_message_text(text)
     return normalized.replace(" ", "")
+
+
+def extract_approved_action_id(message_text: str) -> str | None:
+    normalized = normalize_message_text(message_text)
+    match = APPROVE_ACTION_PATTERN.fullmatch(normalized)
+    if match is None:
+        return None
+    return match.group(1).upper()
 
 
 def is_follow_up_trigger(trigger_command: TriggerCommand) -> bool:

@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `RET-001` complete
-- Overall status: the codebase now has deterministic planner-router-ranker retrieval on top of the thread-memory incident baseline, with weak-evidence filtering and bounded second-pass recall wired through the existing live Feishu flow
-- Recommended next task: `ACT-001 Add action proposal queue and approval-backed incident actions`
-- Last known good state: runnable incident-analysis scaffold with explicit thread memory, deterministic evidence routing, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and `65` passing regression tests
+- Phase: `ACT-001` complete
+- Overall status: the codebase now has a thread-scoped action proposal queue on top of the memory and retrieval baseline, with summarize-thread proposals, approval commands, and approval-backed task-sync/postmortem write-back wired through the live Feishu flow
+- Recommended next task: `GRW-001 Add controlled growth kernel with recorder and skill candidates`
+- Last known good state: runnable incident-analysis scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident actions, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and `75` passing regression tests
 
 ## Canonical Files
 
@@ -32,7 +32,7 @@
 - the current implemented workflow remains explicit manual trigger in Feishu
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
-- high-risk external actions remain approval-gated
+- high-risk external actions remain approval-gated through a thread-scoped pending action queue
 
 ## Open Decisions
 
@@ -168,6 +168,49 @@ Required fields:
   - User/org memory, audit recording, and growth-kernel promotion flows remain unimplemented
 - Next recommended task:
   - `ACT-001 Add action proposal queue and approval-backed incident actions`
+
+### Session 024
+
+- Date: 2026-04-11
+- Primary task: `ACT-001`
+- Objective: add a persisted thread-scoped action proposal queue plus explicit approval commands so task-sync and postmortem actions become reviewable and executable from the same Feishu thread
+- Files changed:
+  - `.env.example`
+  - `README.md`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/__init__.py`
+  - `app/services/kernel/action_queue_service.py`
+  - `data/actions/.gitkeep`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `schema.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_action_queue_service.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_incident_action_service.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_feishu_callback.py tests/test_action_queue_service.py tests/test_incident_action_service.py tests/test_feishu_live_flow.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `ACT-001` complete
+  - Summarize-thread success replies now create persisted task-sync and postmortem actions under a thread-scoped action queue
+  - Users can approve actions with explicit commands such as `批准动作 A1`, and the selected action executes and writes its result back to the same thread
+  - Reply-send failures now discard just-created pending actions so invisible action ids are not left behind
+- Blockers:
+  - The action queue is local file-backed state only and does not yet emit audit records or reusable skill candidates
+  - External task sync still depends on a configured downstream client; without one, approval returns a controlled failure result rather than a real external task
+- Next recommended task:
+  - `GRW-001 Add controlled growth kernel with recorder and skill candidates`
 
 ### Session 001
 

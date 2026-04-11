@@ -45,6 +45,8 @@ Recommended fixture types:
 | T-013 | Explicit thread memory continuity | Automated | Post-P0 |
 | T-014 | Release evidence route preference | Automated | Post-P0 |
 | T-015 | Weak evidence filtering | Automated | Post-P0 |
+| T-016 | Pending action persistence | Automated | Post-P0 |
+| T-017 | Approval-backed incident action execution | Automated | Post-P0 |
 
 ## 4. Detailed Test Cases
 
@@ -305,6 +307,40 @@ Expected result:
 - Retrieval returns no strong citation candidates, or only citations above the configured threshold
 - The analysis layer still emits `insufficient_context` when no reliable evidence remains
 - The system does not convert a weak hit into a confident diagnosis
+
+### T-016 Pending Action Persistence
+
+Goal:
+
+- Confirm summarize-thread success replies can persist reviewable task-sync and postmortem actions before execution.
+
+Input:
+
+- A summarize-thread trigger with a successful structured summary
+
+Expected result:
+
+- The thread-scoped action queue stores pending task-sync and postmortem actions
+- The user-facing reply includes action ids and approval commands
+- If the reply send fails, the just-created pending actions are discarded
+
+### T-017 Approval-Backed Incident Action Execution
+
+Goal:
+
+- Confirm explicit approval commands execute only the targeted action and write the result back to the same thread.
+
+Input:
+
+- An existing pending action such as `A1`
+- A thread message containing `批准动作 A1`
+
+Expected result:
+
+- The system resolves the action only within the current thread
+- Task-sync actions execute with `confirmed = true`
+- Postmortem actions write the rendered draft back to the same thread
+- Repeated approval does not create duplicate side effects
 
 ## 5. Manual Verification Checklist
 

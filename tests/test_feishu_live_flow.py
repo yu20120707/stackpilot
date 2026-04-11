@@ -6,6 +6,7 @@ import pytest
 
 from app.clients.feishu_client import FeishuClient
 from app.models.contracts import (
+    ActionScope,
     FeishuReplySendResult,
     FeishuThreadLoadResponse,
     NormalizedFeishuMessageEvent,
@@ -13,9 +14,14 @@ from app.models.contracts import (
 )
 from app.services.analysis_service import AnalysisService
 from app.services.feishu_live_flow import FeishuLiveFlow
+from app.services.incident_action_service import IncidentActionService
+from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
+from app.services.postmortem_renderer import PostmortemRenderer
+from app.services.postmortem_service import PostmortemService
 from app.services.reply_renderer import ReplyRenderer
+from app.services.task_sync_service import TaskSyncService
 from app.services.thread_reader import ThreadReader
 
 
@@ -74,6 +80,19 @@ class FakeLLMClient:
     async def generate_structured_summary(self, *, system_prompt: str, user_prompt: str) -> str:
         self.calls.append((system_prompt, user_prompt))
         return self.response
+
+
+class FakeTaskSyncClient:
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def create_task(self, *, target, draft):  # noqa: ANN001
+        self.calls.append(draft.title)
+        return {
+            "title": draft.title,
+            "external_id": f"TASK-{len(self.calls)}",
+            "external_url": f"https://tasks.example.local/{len(self.calls)}",
+        }
 
 
 def build_trigger_event() -> NormalizedFeishuMessageEvent:
@@ -188,3 +207,127 @@ async def test_feishu_live_flow_does_not_persist_thread_state_when_reply_send_fa
 
     assert len(feishu_client.reply_calls) == 1
     assert memory_service.load_thread_state(memory_service.resolve_scope(build_trigger_event())) is None
+
+
+@pytest.mark.anyio
+async def test_feishu_live_flow_persists_pending_actions_for_summarize_thread(tmp_path: Path) -> None:
+    feishu_client = FakeLiveFeishuClient(load_json("feishu", "thread_messages.json"))
+    llm_client = FakeLLMClient(load_text("analysis", "structured_summary_success.json"))
+    memory_service = MemoryService(tmp_path / "memory")
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    incident_action_service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=TaskSyncService(),
+        postmortem_service=PostmortemService(llm_client),
+        postmortem_renderer=PostmortemRenderer(),
+    )
+    live_flow = FeishuLiveFlow(
+        feishu_client=feishu_client,
+        thread_reader=ThreadReader(feishu_client, memory_service=memory_service),
+        memory_service=memory_service,
+        knowledge_base=KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3),
+        analysis_service=AnalysisService(
+            llm_client,
+            prompt_path=Path("app/prompts/analysis_prompt.md"),
+        ),
+        reply_renderer=ReplyRenderer(),
+        incident_action_service=incident_action_service,
+    )
+
+    await live_flow.process_trigger(
+        trigger_command=TriggerCommand.SUMMARIZE_THREAD,
+        trigger_event=build_trigger_event(),
+    )
+
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    pending_actions = action_queue_service.list_pending_actions(scope)
+    assert [action.action_id for action in pending_actions] == ["A1", "A2"]
+    assert "待审批动作：" in feishu_client.reply_calls[0][3]
+    assert "批准动作 A1" in feishu_client.reply_calls[0][3]
+
+
+@pytest.mark.anyio
+async def test_feishu_live_flow_discards_pending_actions_when_summary_reply_send_fails(tmp_path: Path) -> None:
+    feishu_client = FakeLiveFeishuClient(
+        load_json("feishu", "thread_messages.json"),
+        reply_success=False,
+    )
+    llm_client = FakeLLMClient(load_text("analysis", "structured_summary_success.json"))
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    incident_action_service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=TaskSyncService(),
+        postmortem_service=PostmortemService(llm_client),
+        postmortem_renderer=PostmortemRenderer(),
+    )
+    live_flow = FeishuLiveFlow(
+        feishu_client=feishu_client,
+        thread_reader=ThreadReader(feishu_client, memory_service=MemoryService(tmp_path / "memory")),
+        memory_service=MemoryService(tmp_path / "memory-2"),
+        knowledge_base=KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3),
+        analysis_service=AnalysisService(
+            llm_client,
+            prompt_path=Path("app/prompts/analysis_prompt.md"),
+        ),
+        reply_renderer=ReplyRenderer(),
+        incident_action_service=incident_action_service,
+    )
+
+    await live_flow.process_trigger(
+        trigger_command=TriggerCommand.SUMMARIZE_THREAD,
+        trigger_event=build_trigger_event(),
+    )
+
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    assert action_queue_service.list_pending_actions(scope) == []
+
+
+@pytest.mark.anyio
+async def test_feishu_live_flow_executes_approved_task_action(tmp_path: Path) -> None:
+    thread_payload = load_json("feishu", "thread_messages.json")
+    feishu_client = FakeLiveFeishuClient(thread_payload)
+    llm_client = FakeLLMClient(load_text("analysis", "structured_summary_success.json"))
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    task_sync_client = FakeTaskSyncClient()
+    incident_action_service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=TaskSyncService(task_sync_client=task_sync_client),
+        postmortem_service=PostmortemService(llm_client),
+        postmortem_renderer=PostmortemRenderer(),
+    )
+    live_flow = FeishuLiveFlow(
+        feishu_client=feishu_client,
+        thread_reader=ThreadReader(feishu_client, memory_service=MemoryService(tmp_path / "memory")),
+        memory_service=MemoryService(tmp_path / "memory-2"),
+        knowledge_base=KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3),
+        analysis_service=AnalysisService(
+            llm_client,
+            prompt_path=Path("app/prompts/analysis_prompt.md"),
+        ),
+        reply_renderer=ReplyRenderer(),
+        incident_action_service=incident_action_service,
+    )
+
+    await live_flow.process_trigger(
+        trigger_command=TriggerCommand.SUMMARIZE_THREAD,
+        trigger_event=build_trigger_event(),
+    )
+
+    approval_event = build_trigger_event().model_copy(
+        update={
+            "message_id": "om_approve_1",
+            "message_text": "批准动作 A1",
+        }
+    )
+    await live_flow.process_trigger(
+        trigger_command=TriggerCommand.APPROVE_ACTION,
+        trigger_event=approval_event,
+    )
+
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    persisted_action = action_queue_service.find_action(scope, "A1")
+    assert persisted_action is not None
+    assert persisted_action.status.value == "executed"
+    assert task_sync_client.calls == ["补充错误日志", "确认最近一次发布内容", "持续观察回滚后的错误率变化"]
+    assert len(feishu_client.reply_calls) == 2
+    assert "动作执行结果：A1 同步待办草稿" in feishu_client.reply_calls[1][3]

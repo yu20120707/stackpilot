@@ -9,6 +9,7 @@ class TriggerCommand(str, Enum):
     ANALYZE_INCIDENT = "analyze_incident"
     SUMMARIZE_THREAD = "summarize_thread"
     RERUN_ANALYSIS = "rerun_analysis"
+    APPROVE_ACTION = "approve_action"
 
 
 class SourceType(str, Enum):
@@ -55,6 +56,17 @@ class FollowUpSource(str, Enum):
     HEURISTIC = "heuristic"
 
 
+class PendingActionType(str, Enum):
+    TASK_SYNC = "task_sync"
+    POSTMORTEM_DRAFT = "postmortem_draft"
+
+
+class PendingActionStatus(str, Enum):
+    PENDING_APPROVAL = "pending_approval"
+    EXECUTED = "executed"
+    EXECUTION_FAILED = "execution_failed"
+
+
 NonEmptyText: TypeAlias = str
 
 
@@ -93,6 +105,13 @@ class MemoryScope(BaseModel):
 
     tenant_id: NonEmptyText = Field(min_length=1)
     user_id: NonEmptyText = Field(min_length=1)
+    thread_id: NonEmptyText = Field(min_length=1)
+
+
+class ActionScope(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    tenant_id: NonEmptyText = Field(min_length=1)
     thread_id: NonEmptyText = Field(min_length=1)
 
 
@@ -234,6 +253,33 @@ class PostmortemDraft(BaseModel):
     follow_up_actions: list[NonEmptyText] = Field(default_factory=list)
     open_questions: list[NonEmptyText] = Field(default_factory=list)
     citations: list[KnowledgeCitation] = Field(default_factory=list)
+
+
+class PendingIncidentAction(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    action_id: NonEmptyText = Field(min_length=1)
+    action_type: PendingActionType
+    status: PendingActionStatus
+    title: NonEmptyText = Field(min_length=1)
+    preview: NonEmptyText = Field(min_length=1)
+    source_thread_id: NonEmptyText = Field(min_length=1)
+    created_by: NonEmptyText = Field(min_length=1)
+    created_at: datetime
+    updated_at: datetime
+    approved_by: str | None = None
+    approved_at: datetime | None = None
+    execution_message: str | None = None
+    task_sync_request: ExternalTaskSyncRequest | None = None
+    postmortem_draft: PostmortemDraft | None = None
+
+
+class ActionQueueState(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    schema_version: int = Field(default=1, ge=1)
+    updated_at: datetime
+    actions: list[PendingIncidentAction] = Field(default_factory=list)
 
 
 ReplyPayload: TypeAlias = StructuredSummary | TemporaryFailureReply

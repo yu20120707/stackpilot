@@ -32,6 +32,10 @@ class Settings(BaseSettings):
         default=Path("data/memory"),
         validation_alias="MEMORY_DIR",
     )
+    action_dir: Path = Field(
+        default=Path("data/actions"),
+        validation_alias="ACTION_DIR",
+    )
 
     feishu_encrypt_key: str | None = Field(
         default=None,
@@ -93,24 +97,19 @@ class Settings(BaseSettings):
         normalized = value.strip()
         return normalized or None
 
-    @field_validator("knowledge_dir", mode="before")
+    @field_validator("knowledge_dir", "memory_dir", "action_dir", mode="before")
     @classmethod
-    def normalize_knowledge_dir(cls, value: str | Path) -> Path:
+    def normalize_path_dir(cls, value: str | Path, info) -> Path:  # noqa: ANN001
         if isinstance(value, Path):
             return value
         normalized = value.strip()
         if not normalized:
-            return Path("data/knowledge")
-        return Path(normalized)
-
-    @field_validator("memory_dir", mode="before")
-    @classmethod
-    def normalize_memory_dir(cls, value: str | Path) -> Path:
-        if isinstance(value, Path):
-            return value
-        normalized = value.strip()
-        if not normalized:
-            return Path("data/memory")
+            defaults = {
+                "knowledge_dir": Path("data/knowledge"),
+                "memory_dir": Path("data/memory"),
+                "action_dir": Path("data/actions"),
+            }
+            return defaults[info.field_name]
         return Path(normalized)
 
     @property
@@ -120,6 +119,10 @@ class Settings(BaseSettings):
     @property
     def resolved_memory_dir(self) -> Path:
         return self.memory_dir.resolve()
+
+    @property
+    def resolved_action_dir(self) -> Path:
+        return self.action_dir.resolve()
 
 
 @lru_cache

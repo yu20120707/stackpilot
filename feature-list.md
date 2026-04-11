@@ -49,10 +49,11 @@ These capabilities already exist and remain the base layer.
 | FD-006 | Todo draft generation | Implemented | Generate task suggestions from discussion state |
 | FD-007 | Confirmation-gated task sync contract | Implemented | Keep external task execution under manual approval |
 | FD-008 | Postmortem draft generation | Implemented | Produce reviewable post-incident draft output |
+| FD-009 | Action proposal queue and approval loop | Implemented | Persist reviewable task/postmortem actions and execute them through explicit thread commands |
 
 ## 5. Incident Workflow Features
 
-These are the incident-domain upgrades around the implemented baseline. The first continuity and retrieval milestones are already in place; the action loop and recorder work remain queued.
+These are the incident-domain upgrades around the implemented baseline. Continuity, retrieval quality, and the first approval-backed action loop are now in place; the recorder and richer team-style shaping remain queued.
 
 | ID | Feature | Status | Priority | Summary |
 | --- | --- | --- | --- | --- |
@@ -60,8 +61,8 @@ These are the incident-domain upgrades around the implemented baseline. The firs
 | INC-002 | User and org memory | Planned | Medium | Store stable output preferences and team conventions |
 | INC-003 | Retrieval planning and routing | Implemented | High | Upgrade keyword retrieval into planner, router, and evidence ranking |
 | INC-004 | Evidence quality threshold | Implemented | High | Prevent weak citations from being treated as sufficient proof |
-| INC-005 | Action proposal queue | Planned | High | Persist task and postmortem proposals before confirmation |
-| INC-006 | Approval-backed action execution | Planned | High | Confirm, execute, and write back external task results |
+| INC-005 | Action proposal queue | Implemented | High | Persist task and postmortem proposals before confirmation |
+| INC-006 | Approval-backed action execution | Implemented | High | Confirm, execute, and write back external task results |
 | INC-007 | Incident interaction recorder | Planned | Medium | Record trigger, output, correction, approval, and adoption signals |
 | INC-008 | Team-style postmortem output | Planned | Medium | Let approved team conventions shape draft structure |
 
