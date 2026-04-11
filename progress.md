@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `GRW-002` complete
-- Overall status: the codebase now has a tenant-scoped canonical convention gateway under the knowledge layer, so approved policy/style docs can shape incident retrieval, review policy lookup, and org convention resolution without making mutable org memory the highest-authority source
-- Recommended next task: `GRW-003 Add approval-backed convention promotion into the canonical gateway`
-- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, org convention shaping, canonical convention docs, workflow-router dispatching, and `108` passing regression tests
+- Phase: `GRW-003` complete
+- Overall status: the codebase now supports approval-backed promotion from approved skill candidates into versioned canonical convention docs, so the growth kernel can move reviewed patterns into runtime-readable policy artifacts without manual file authoring
+- Recommended next task: `CR-003 Add GitHub-side review outcome ingestion and richer adoption signals`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, org convention shaping, canonical convention docs, approval-backed canonical promotion, workflow-router dispatching, and `112` passing regression tests
 
 ## Canonical Files
 
@@ -37,6 +37,7 @@
 - Tenant org memory can now shape postmortem title, follow-up wording, and section labels without overriding explicit user intent
 - Approved canonical convention docs now override mutable org memory for org-level defaults and shared policy retrieval
 - Postmortem actions now snapshot the resolved style at creation time so later approval does not drift when mutable org memory changes
+- Users can now propose canonical promotion with a Feishu command, review it as a pending action, and approve a versioned canonical doc write from the same thread
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated through a thread-scoped pending action queue
 - skill candidates remain draft-only by default and do not participate in runtime routing yet
@@ -53,7 +54,7 @@
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
 - GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
-- Canonical convention docs are runtime-readable now, but there is still no approval-backed promotion flow to create or version them from in-product actions.
+- GitHub-side adoption and review-outcome signals are still missing; review reuse still depends mainly on explicit Feishu feedback and publish events.
 
 ## Handoff Rules
 
@@ -447,6 +448,45 @@ Required fields:
   - GitHub-side adoption signals still do not feed the growth kernel automatically
 - Next recommended task:
   - `GRW-003 Add approval-backed convention promotion into the canonical gateway`
+
+### Session 030
+
+- Date: 2026-04-11
+- Primary task: `GRW-003`
+- Objective: connect approved skill candidates to the canonical gateway through an explicit proposal-and-approval flow that writes versioned canonical docs instead of requiring manual file authoring
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/convention_promotion_service.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/kernel/canonical_convention_service.py`
+  - `app/services/skill_miner.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_command_parser.py`
+  - `tests/test_convention_promotion_service.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_feishu_live_flow.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_convention_promotion_service.py tests/test_command_parser.py tests/test_feishu_callback.py tests/test_feishu_live_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `GRW-003` complete
+  - Users can now issue `沉淀规范 skill-xxx` in Feishu, receive a pending promotion action, and approve a versioned canonical-doc write from the same thread
+  - Promotion writes a snapshotted canonical document instead of regenerating from mutable candidate state at approval time, and successful promotion activates the approved skill candidate
+  - Versioned canonical doc retention means older versions remain on disk for manual rollback readiness while audit logs capture promotion events
+- Blockers:
+  - GitHub-side review outcomes still are not ingested, so adoption quality depends on publish events and explicit Feishu feedback
+  - Promotion currently targets approved skill candidates only; it does not yet support a richer diff-review workflow for canonical doc updates
+- Next recommended task:
+  - `CR-003 Add GitHub-side review outcome ingestion and richer adoption signals`
 
 ### Session 001
 

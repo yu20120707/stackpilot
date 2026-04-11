@@ -238,3 +238,22 @@ Copy this format for new confirmed decisions.
   - `tech-spec.md`
 - Revisit when:
   - there is an approval-backed promotion flow that can create and version canonical convention docs directly from runtime evidence or approved skill candidates
+
+### DEC-013
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: canonical convention promotion must reuse the existing pending-action approval loop and write versioned docs from a snapshot prepared at proposal time.
+- Why: promotion is a high-risk behavior change, so it should be explicit, reviewable, auditable, and stable even if the underlying skill candidate changes before approval.
+- Alternatives considered:
+  - allow direct promotion without a pending action
+  - rebuild the canonical document from the current skill candidate only at approval time
+- Impacted files:
+  - `app/services/convention_promotion_service.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/kernel/canonical_convention_service.py`
+  - `app/models/contracts.py`
+  - `tech-spec.md`
+  - `progress.md`
+- Revisit when:
+  - promotion evolves from one-shot versioned writes into a richer rollback or diff-review flow

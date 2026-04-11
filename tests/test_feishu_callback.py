@@ -106,6 +106,27 @@ def test_feishu_callback_accepts_review_feedback_trigger() -> None:
     assert body["data"]["trigger_command"] == "review_feedback"
 
 
+def test_feishu_callback_accepts_canonical_promotion_trigger() -> None:
+    class FakeWorkflowRouter:
+        async def process_trigger(self, *, trigger_command, trigger_event) -> None:
+            _ = (trigger_command, trigger_event)
+
+    app.state.services.workflow_router = FakeWorkflowRouter()
+    client = TestClient(app)
+    payload = load_fixture("supported_message_event.json")
+    payload["event"]["message"]["content"] = json.dumps(
+        {"text": "@stackpilot 沉淀规范 skill-review-security-focus"},
+        ensure_ascii=False,
+    )
+
+    response = client.post("/api/feishu/events", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["status"] == "accepted"
+    assert body["data"]["trigger_command"] == "promote_canonical"
+
+
 def test_feishu_callback_ignores_unsupported_group_chatter() -> None:
     client = TestClient(app)
 

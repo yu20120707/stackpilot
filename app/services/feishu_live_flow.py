@@ -20,7 +20,8 @@ from app.models.contracts import (
     TriggerCommand,
 )
 from app.services.analysis_service import AnalysisService
-from app.services.command_parser import extract_approved_action_id
+from app.services.command_parser import extract_approved_action_id, extract_promotion_candidate_id
+from app.services.convention_promotion_service import ConventionPromotionService
 from app.services.incident_action_service import IncidentActionService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
@@ -43,6 +44,7 @@ class FeishuLiveFlow:
         reply_renderer: ReplyRenderer,
         memory_service: MemoryService | None = None,
         incident_action_service: IncidentActionService | None = None,
+        convention_promotion_service: ConventionPromotionService | None = None,
         interaction_recorder: InteractionRecorder | None = None,
         skill_miner: SkillMiner | None = None,
     ) -> None:
@@ -53,6 +55,7 @@ class FeishuLiveFlow:
         self.analysis_service = analysis_service
         self.reply_renderer = reply_renderer
         self.incident_action_service = incident_action_service
+        self.convention_promotion_service = convention_promotion_service
         self.interaction_recorder = interaction_recorder
         self.skill_miner = skill_miner
 
@@ -64,6 +67,10 @@ class FeishuLiveFlow:
     ) -> None:
         if trigger_command is TriggerCommand.APPROVE_ACTION:
             await self._process_action_approval(trigger_event=trigger_event)
+            return
+
+        if trigger_command is TriggerCommand.PROMOTE_CANONICAL:
+            await self._process_canonical_promotion(trigger_event=trigger_event)
             return
 
         logger.info(
@@ -254,6 +261,37 @@ class FeishuLiveFlow:
             action_id,
         )
 
+        if (
+            self.convention_promotion_service is not None
+            and self.convention_promotion_service.can_handle_action(scope, action_id)
+        ):
+            executed_action, reply_text = self.convention_promotion_service.execute_promotion_action(
+                scope=scope,
+                action_id=action_id,
+                approved_by=trigger_event.sender_id,
+            )
+            send_result = await self._send_action_reply(
+                trigger_event=trigger_event,
+                reply_text=reply_text,
+            )
+            if send_result.success and executed_action is not None:
+                self._record_action_execution(
+                    scope=scope,
+                    trigger_event=trigger_event,
+                    action=executed_action,
+                )
+            elif not send_result.success:
+                self._record_reply_send_failure(
+                    scope=scope,
+                    trigger_event=trigger_event,
+                    trigger_command=TriggerCommand.APPROVE_ACTION,
+                    reply_payload=None,
+                    pending_actions=[],
+                    error_message=send_result.error_message,
+                    action_id=action_id,
+                )
+            return
+
         if action is not None and action.action_type is PendingActionType.POSTMORTEM_DRAFT:
             pending_action, reply_text = self.incident_action_service.build_postmortem_reply(
                 scope=scope,
@@ -315,6 +353,56 @@ class FeishuLiveFlow:
                 pending_actions=[],
                 error_message=send_result.error_message,
                 action_id=action_id,
+            )
+
+    async def _process_canonical_promotion(
+        self,
+        *,
+        trigger_event: NormalizedFeishuMessageEvent,
+    ) -> None:
+        if self.convention_promotion_service is None:
+            await self._send_action_reply(
+                trigger_event=trigger_event,
+                reply_text="当前未配置 canonical 规范推广能力。",
+            )
+            return
+
+        candidate_id = extract_promotion_candidate_id(trigger_event.message_text)
+        if candidate_id is None:
+            await self._send_action_reply(
+                trigger_event=trigger_event,
+                reply_text="未识别到 skill candidate 编号。请使用“沉淀规范 skill-xxx”这类命令。",
+            )
+            return
+
+        scope = self.convention_promotion_service.action_queue_service.resolve_scope(trigger_event)
+        try:
+            action = self.convention_promotion_service.prepare_promotion_action(
+                scope=scope,
+                candidate_id=candidate_id,
+                requested_by=trigger_event.sender_id,
+            )
+            self.convention_promotion_service.persist_actions(scope=scope, actions=[action])
+        except ValueError as exc:
+            await self._send_action_reply(
+                trigger_event=trigger_event,
+                reply_text=str(exc),
+            )
+            return
+
+        send_result = await self._send_action_reply(
+            trigger_event=trigger_event,
+            reply_text=self.convention_promotion_service.render_pending_actions([action]),
+        )
+        if not send_result.success:
+            self.convention_promotion_service.discard_actions(scope=scope, actions=[action])
+            self._record_reply_send_failure(
+                scope=scope,
+                trigger_event=trigger_event,
+                trigger_command=TriggerCommand.PROMOTE_CANONICAL,
+                reply_payload=None,
+                pending_actions=[action],
+                error_message=send_result.error_message,
             )
 
     async def _send_action_reply(

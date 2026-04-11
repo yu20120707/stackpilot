@@ -61,6 +61,10 @@ REVIEW_FEEDBACK_PATTERN = re.compile(
     r"^(?:(采纳|接受|忽略|驳回))(?:审查|建议|finding)?\s+([a-z0-9_-]+)$",
     re.IGNORECASE,
 )
+PROMOTE_CANONICAL_PATTERN = re.compile(
+    r"^(?:沉淀|推广|提升为)(?:规范|技能|canonical)?\s+([a-z0-9_-]+)$",
+    re.IGNORECASE,
+)
 
 
 def parse_trigger_command(message_text: str) -> TriggerCommand | None:
@@ -74,6 +78,9 @@ def parse_trigger_command(message_text: str) -> TriggerCommand | None:
 
     if extract_review_feedback(normalized_text) is not None:
         return TriggerCommand.REVIEW_FEEDBACK
+
+    if extract_promotion_candidate_id(normalized_text) is not None:
+        return TriggerCommand.PROMOTE_CANONICAL
 
     if _is_code_review_trigger(
         original_text=message_text,
@@ -122,6 +129,14 @@ def extract_review_feedback(message_text: str) -> tuple[str, str] | None:
     if verb in {"采纳", "接受"}:
         return ("accepted", finding_id)
     return ("ignored", finding_id)
+
+
+def extract_promotion_candidate_id(message_text: str) -> str | None:
+    normalized = normalize_message_text(message_text)
+    match = PROMOTE_CANONICAL_PATTERN.fullmatch(normalized)
+    if match is None:
+        return None
+    return match.group(1)
 
 
 def is_follow_up_trigger(trigger_command: TriggerCommand) -> bool:

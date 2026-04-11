@@ -26,6 +26,7 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - org-level review default focus shaping
 - team-style postmortem draft and rendering shaping
 - approved canonical convention docs under the knowledge layer
+- approval-backed promotion of approved skill candidates into versioned canonical convention docs
 
 Still out of scope for the current foundation:
 
@@ -73,6 +74,7 @@ app/
     analysis_prompt.md
   services/
     command_parser.py
+    convention_promotion_service.py
     thread_reader.py
     knowledge_base.py
     analysis_service.py
@@ -210,6 +212,7 @@ P0 supported manual commands:
 - `审一下这个 diff` with inline patch content
 - `采纳建议 F1`
 - `忽略建议 F2`
+- `沉淀规范 skill-review-security-focus`
 
 The route must hand off a normalized trigger event to a workflow router, which then dispatches either incident analysis or AI code review to the service layer.
 
@@ -260,6 +263,15 @@ One AI-code-review request currently moves through the system in this order:
 12. The review memory service persists the latest review state and finding ids for the thread
 13. Users can approve the pending publish action from the same thread to post a draft comment back to GitHub
 14. Users can explicitly mark findings as accepted or ignored from the same thread, and the interaction recorder stores those feedback signals for later mining
+
+Canonical convention promotion now moves through this order:
+
+1. A user explicitly requests promotion with a command such as `沉淀规范 skill-review-security-focus`
+2. The convention-promotion service loads the approved skill candidate and builds a versioned canonical-doc snapshot
+3. The service persists a pending `canonical_convention_promotion` action in the shared action queue
+4. A user approves the pending action with `批准动作 A1`
+5. The canonical convention service writes a versioned document under `data/knowledge/canonical/<tenant>`
+6. The audit log records the promotion event, and the skill candidate is activated when promotion succeeds
 
 Approval-backed incident actions move through this order:
 

@@ -575,7 +575,7 @@
       "id": "GRW-003",
       "title": "Add approval-backed convention promotion into the canonical gateway",
       "milestone": "M9",
-      "status": "not_started",
+      "status": "done",
       "priority": 23,
       "depends_on": [
         "GRW-002"
@@ -591,7 +591,29 @@
         "Canonical promotion writes versioned artifacts and audit entries instead of silently mutating runtime memory.",
         "New runtime requests can use promoted canonical docs while previously created pending actions remain stable through snapshots."
       ],
-      "notes": "This next milestone should connect the growth kernel to the canonical gateway so approved patterns no longer require manual file authoring."
+      "notes": "Completed with a promotion request contract, a new convention promotion service, explicit Feishu promotion commands that create pending approval actions, versioned canonical doc writes, candidate activation on successful promotion, and regression coverage for proposal, approval, and version retention."
+    },
+    {
+      "id": "CR-003",
+      "title": "Add GitHub-side review outcome ingestion and richer adoption signals",
+      "milestone": "M10",
+      "status": "not_started",
+      "priority": 24,
+      "depends_on": [
+        "GRW-003"
+      ],
+      "deliverables": [
+        "GitHub review outcome ingest contract",
+        "Publish-result reconciliation",
+        "Review adoption signal enrichment",
+        "Outcome-to-growth regression tests"
+      ],
+      "acceptance_checks": [
+        "Published review comments can be reconciled with GitHub-side outcome signals instead of relying only on in-thread explicit feedback.",
+        "The growth kernel can distinguish published, accepted, ignored, and unresolved review outcomes with explicit source attribution.",
+        "Repo-side outcome ingestion remains approval-safe, tenant-scoped, and does not infer acceptance from silence."
+      ],
+      "notes": "This next milestone should reduce reliance on manual Feishu feedback by pulling higher-quality review outcome signals from the repo side."
     }
   ]
 }

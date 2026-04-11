@@ -45,6 +45,9 @@ Supported `trigger_command` values in P0:
 - `analyze_incident`
 - `summarize_thread`
 - `rerun_analysis`
+- `review_code`
+- `review_feedback`
+- `promote_canonical`
 - `approve_action`
 
 ## 2.1 Follow-Up Context
@@ -404,6 +407,7 @@ Field rules:
 - `task_sync_request`: optional `ExternalTaskSyncRequest`
 - `postmortem_draft`: optional `PostmortemDraft`
 - `postmortem_style_snapshot`: optional resolved style snapshot used to keep later postmortem write-back stable even if mutable org memory changes
+- `canonical_promotion_request`: optional proposal snapshot used to promote an approved skill candidate into a versioned canonical doc after explicit approval
 
 ## 10.3 Growth Evidence Models
 
@@ -673,6 +677,53 @@ Field rules:
 Constraint:
 
 - canonical convention docs are tenant-scoped and reusable across workflows, but they are still loaded read-only at runtime
+
+## 10.7 Canonical Convention Promotion Request
+
+Promotion actions now snapshot the exact canonical document to be written after approval.
+
+Example:
+
+```json
+{
+  "candidate_id": "skill-review-security-focus",
+  "candidate_name": "review-security-focus-loop",
+  "workflow": "review",
+  "requested_by": "ou_xxx",
+  "target_convention_id": "skill-review-security-focus",
+  "target_version": 2,
+  "canonical_document": {
+    "schema_version": 1,
+    "convention_id": "skill-review-security-focus",
+    "version": 2,
+    "title": "review-security-focus-loop Canonical Convention",
+    "status": "approved",
+    "review_defaults": {
+      "default_focus_areas": [
+        "security"
+      ]
+    },
+    "policy_documents": [
+      {
+        "doc_id": "skill-review-security-focus-policy",
+        "title": "Approved review-security-focus-loop Policy",
+        "content": "Candidate: review-security-focus-loop\nWorkflow: review",
+        "scope": "review",
+        "source_uri": "canonical://oc_xxx/skill-review-security-focus/skill-review-security-focus-policy",
+        "tags": [
+          "policy",
+          "review",
+          "security"
+        ]
+      }
+    ]
+  }
+}
+```
+
+Constraint:
+
+- approval writes the exact snapshotted canonical document instead of regenerating it from the latest mutable candidate state
 
 ## 11. Null And Empty Rules
 

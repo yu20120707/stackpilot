@@ -133,6 +133,7 @@ class SkillMiner:
                 record.event_type is not InteractionEventType.ACTION_EXECUTED
                 or record.pattern_key is None
                 or record.action_type is None
+                or record.action_type not in {PendingActionType.TASK_SYNC, PendingActionType.POSTMORTEM_DRAFT}
             ):
                 continue
             patterns[record.pattern_key] = record.action_type

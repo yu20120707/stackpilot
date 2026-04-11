@@ -216,6 +216,13 @@ The platform must not automatically:
 - review feedback reuse
 - cross-workflow approved skill reuse
 
+### Phase 5: Canonical Promotion
+
+- approval-backed convention promotion
+- versioned canonical doc writes
+- runtime reuse through approved-doc precedence
+- audit-backed rollback readiness
+
 ## 8. Module Direction
 
 Expected new services over time:

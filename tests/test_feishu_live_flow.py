@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -11,13 +11,17 @@ from app.models.contracts import (
     FeishuThreadLoadResponse,
     InteractionEventType,
     NormalizedFeishuMessageEvent,
+    SkillCandidate,
+    SkillCandidateStatus,
     TriggerCommand,
 )
 from app.services.analysis_service import AnalysisService
+from app.services.convention_promotion_service import ConventionPromotionService
 from app.services.feishu_live_flow import FeishuLiveFlow
 from app.services.incident_action_service import IncidentActionService
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
@@ -117,7 +121,7 @@ def build_growth_services(tmp_path: Path) -> tuple[InteractionRecorder, SkillMin
     return interaction_recorder, skill_miner, skill_registry
 
 
-def build_trigger_event() -> NormalizedFeishuMessageEvent:
+def build_trigger_event(message_text: str = "分析一下这次故障") -> NormalizedFeishuMessageEvent:
     payload = load_json("feishu", "supported_message_event.json")
     event = payload["event"]
     message = event["message"]
@@ -127,7 +131,7 @@ def build_trigger_event() -> NormalizedFeishuMessageEvent:
         thread_id=message["thread_id"],
         sender_id=event["sender"]["sender_id"]["open_id"],
         sender_name=event["sender"]["sender_name"],
-        message_text="分析一下这次故障",
+        message_text=message_text,
         mentions_bot=True,
         event_time=datetime.fromisoformat("2026-04-10T01:00:00+08:00"),
     )
@@ -489,3 +493,81 @@ async def test_feishu_live_flow_records_action_execution_and_mines_draft_skill(t
     candidate = skill_registry.load_candidate("oc_xxx", "skill-incident-task-sync-approval")
     assert candidate is not None
     assert candidate.status.value == "draft"
+
+
+@pytest.mark.anyio
+async def test_feishu_live_flow_proposes_and_executes_canonical_promotion(tmp_path: Path) -> None:
+    interaction_recorder, skill_miner, skill_registry = build_growth_services(tmp_path)
+    candidate = skill_registry.create_draft_candidate(
+        SkillCandidate(
+            candidate_id="skill-review-security-focus",
+            tenant_id="oc_xxx",
+            name="review-security-focus-loop",
+            workflow="review",
+            status=SkillCandidateStatus.DRAFT,
+            source_pattern_key="review/focus/security/accepted_finding",
+            trigger_conditions=["Users repeatedly accepted security findings."],
+            steps=["Resolve security focus.", "Generate review findings."],
+            verification_steps=["Accepted findings remain traceable."],
+            failure_signals=["Repeated ignored findings."],
+            evidence_event_ids=["evt-1", "evt-2"],
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+    )
+    skill_registry.approve_candidate(candidate.tenant_id, candidate.candidate_id, "ou_reviewer")
+
+    feishu_client = FakeLiveFeishuClient(load_json("feishu", "thread_messages.json"))
+    llm_client = FakeLLMClient(load_text("analysis", "structured_summary_success.json"))
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    canonical_service = CanonicalConventionService(
+        tmp_path / "knowledge",
+        audit_log_service=AuditLogService(tmp_path / "records"),
+    )
+    live_flow = FeishuLiveFlow(
+        feishu_client=feishu_client,
+        thread_reader=ThreadReader(feishu_client, memory_service=MemoryService(tmp_path / "memory")),
+        memory_service=MemoryService(tmp_path / "memory-2"),
+        knowledge_base=KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3),
+        analysis_service=AnalysisService(
+            llm_client,
+            prompt_path=Path("app/prompts/analysis_prompt.md"),
+        ),
+        reply_renderer=ReplyRenderer(),
+        incident_action_service=IncidentActionService(
+            action_queue_service=action_queue_service,
+            task_sync_service=TaskSyncService(),
+            postmortem_service=PostmortemService(llm_client),
+            postmortem_renderer=PostmortemRenderer(),
+        ),
+        convention_promotion_service=ConventionPromotionService(
+            action_queue_service=action_queue_service,
+            skill_registry=skill_registry,
+            canonical_convention_service=canonical_service,
+        ),
+        interaction_recorder=interaction_recorder,
+        skill_miner=skill_miner,
+    )
+
+    await live_flow.process_trigger(
+        trigger_command=TriggerCommand.PROMOTE_CANONICAL,
+        trigger_event=build_trigger_event("沉淀规范 skill-review-security-focus"),
+    )
+
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    pending_actions = action_queue_service.list_pending_actions(scope)
+    assert [action.action_id for action in pending_actions] == ["A1"]
+    assert "批准动作 A1" in feishu_client.reply_calls[0][3]
+
+    await live_flow.process_trigger(
+        trigger_command=TriggerCommand.APPROVE_ACTION,
+        trigger_event=build_trigger_event("批准动作 A1").model_copy(
+            update={"message_id": "om_promote_approve_1"}
+        ),
+    )
+
+    persisted_action = action_queue_service.find_action(scope, "A1")
+    assert persisted_action is not None
+    assert persisted_action.status.value == "executed"
+    assert (tmp_path / "knowledge" / "canonical" / "oc_xxx" / "skill-review-security-focus.v1.canonical.json").exists()
+    assert "已写入 canonical convention v1" in feishu_client.reply_calls[1][3]

@@ -111,7 +111,8 @@ These features are shared by incident and code-review workflows.
 | GR-006 | Skill approval lifecycle | Implemented | Medium | Promote skills through draft, approved, active, retired states |
 | GR-007 | Evaluation and feedback loop | Planned | Medium | Score which behaviors helped, failed, or were corrected |
 | GR-008 | Canonical knowledge gateway | Implemented | High | Keep product truth anchored to approved docs, not chat memory |
-| GR-009 | Convention promotion flow | Planned | High | Promote approved patterns into canonical docs through explicit approval |
+| GR-009 | Convention promotion flow | Implemented | High | Promote approved patterns into canonical docs through explicit approval |
+| GR-010 | GitHub outcome ingestion | Planned | Medium | Capture publish and acceptance signals from GitHub-side review outcomes |
 
 ### GR-001 Evidence Ledger
 
@@ -209,6 +210,7 @@ User-visible outcome:
 | M7 | Apply org conventions across workflows | INC-002, INC-007, INC-008, GR-002 |
 | M8 | Anchor canonical team knowledge | GR-008 |
 | M9 | Promote approved conventions safely | GR-007, GR-009 |
+| M10 | Ingest repo-side review outcomes | CR-008, GR-010 |
 
 ## 9. Explicit Non-Goals
 

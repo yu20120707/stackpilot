@@ -9,6 +9,7 @@ from app.api.feishu import router as feishu_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
 from app.services.analysis_service import AnalysisService
+from app.services.convention_promotion_service import ConventionPromotionService
 from app.services.feishu_live_flow import FeishuLiveFlow
 from app.services.incident_action_service import IncidentActionService
 from app.services.kernel.audit_log_service import AuditLogService
@@ -78,13 +79,16 @@ def build_services(settings: Settings) -> AppServices:
         )
     )
     memory_service = MemoryService(settings.resolved_memory_dir)
-    canonical_convention_service = CanonicalConventionService(settings.resolved_knowledge_dir)
+    action_queue_service = ActionQueueService(settings.resolved_action_dir)
+    audit_log_service = AuditLogService(settings.resolved_records_dir)
+    canonical_convention_service = CanonicalConventionService(
+        settings.resolved_knowledge_dir,
+        audit_log_service=audit_log_service,
+    )
     org_convention_service = OrgConventionService(
         memory_service,
         canonical_convention_service=canonical_convention_service,
     )
-    action_queue_service = ActionQueueService(settings.resolved_action_dir)
-    audit_log_service = AuditLogService(settings.resolved_records_dir)
     interaction_recorder = InteractionRecorder(
         settings.resolved_records_dir,
         audit_log_service=audit_log_service,
@@ -118,6 +122,11 @@ def build_services(settings: Settings) -> AppServices:
         postmortem_renderer=postmortem_renderer,
         org_convention_service=org_convention_service,
     )
+    convention_promotion_service = ConventionPromotionService(
+        action_queue_service=action_queue_service,
+        skill_registry=skill_registry,
+        canonical_convention_service=canonical_convention_service,
+    )
     reply_renderer = ReplyRenderer()
     review_renderer = ReviewRenderer()
     review_service = ReviewService(llm_client)
@@ -139,6 +148,7 @@ def build_services(settings: Settings) -> AppServices:
         analysis_service=analysis_service,
         reply_renderer=reply_renderer,
         incident_action_service=incident_action_service,
+        convention_promotion_service=convention_promotion_service,
         interaction_recorder=interaction_recorder,
         skill_miner=skill_miner,
     )

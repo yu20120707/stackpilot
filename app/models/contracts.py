@@ -13,6 +13,7 @@ class TriggerCommand(str, Enum):
     RERUN_ANALYSIS = "rerun_analysis"
     REVIEW_CODE = "review_code"
     REVIEW_FEEDBACK = "review_feedback"
+    PROMOTE_CANONICAL = "promote_canonical"
     APPROVE_ACTION = "approve_action"
 
 
@@ -64,6 +65,7 @@ class PendingActionType(str, Enum):
     TASK_SYNC = "task_sync"
     POSTMORTEM_DRAFT = "postmortem_draft"
     REVIEW_PUBLISH = "review_publish"
+    CANONICAL_CONVENTION_PROMOTION = "canonical_convention_promotion"
 
 
 class PendingActionStatus(str, Enum):
@@ -309,6 +311,7 @@ class CanonicalConventionDocument(BaseModel):
 
     schema_version: int = Field(default=1, ge=1)
     convention_id: NonEmptyText = Field(min_length=1)
+    version: int = Field(default=1, ge=1)
     title: NonEmptyText = Field(min_length=1)
     status: CanonicalConventionStatus = CanonicalConventionStatus.APPROVED
     review_defaults: OrgReviewDefaults | None = None
@@ -462,6 +465,18 @@ class ExternalTaskSyncResult(BaseModel):
     message: NonEmptyText = Field(min_length=1)
 
 
+class CanonicalConventionPromotionRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    candidate_id: NonEmptyText = Field(min_length=1)
+    candidate_name: NonEmptyText = Field(min_length=1)
+    workflow: NonEmptyText = Field(min_length=1)
+    requested_by: NonEmptyText = Field(min_length=1)
+    target_convention_id: NonEmptyText = Field(min_length=1)
+    target_version: int = Field(ge=1)
+    canonical_document: CanonicalConventionDocument
+
+
 class PostmortemTimelineEntry(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -504,6 +519,7 @@ class PendingIncidentAction(BaseModel):
     postmortem_style_snapshot: OrgPostmortemStyle | None = None
     review_publish_request: ReviewPublishRequest | None = None
     review_draft: CodeReviewDraft | None = None
+    canonical_promotion_request: CanonicalConventionPromotionRequest | None = None
 
 
 class ActionQueueState(BaseModel):

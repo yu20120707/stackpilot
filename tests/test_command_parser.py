@@ -2,6 +2,7 @@ from app.models.contracts import TriggerCommand
 from app.services.command_parser import (
     SUPPORTED_TRIGGER_PHRASES,
     extract_approved_action_id,
+    extract_promotion_candidate_id,
     extract_review_feedback,
     normalize_message_text,
     parse_trigger_command,
@@ -41,6 +42,12 @@ def test_command_parser_matches_review_feedback_commands() -> None:
     assert parse_trigger_command("@stackpilot 忽略finding f2") is TriggerCommand.REVIEW_FEEDBACK
     assert extract_review_feedback("接受审查 F3") == ("accepted", "F3")
     assert extract_review_feedback("驳回建议 f4") == ("ignored", "F4")
+
+
+def test_command_parser_matches_canonical_promotion_commands() -> None:
+    assert parse_trigger_command("沉淀规范 skill-review-security-focus") is TriggerCommand.PROMOTE_CANONICAL
+    assert parse_trigger_command("@stackpilot 推广技能 skill-review-security-focus") is TriggerCommand.PROMOTE_CANONICAL
+    assert extract_promotion_candidate_id("提升为规范 skill-review-security-focus") == "skill-review-security-focus"
 
 
 def test_command_parser_matches_manual_code_review_triggers() -> None:

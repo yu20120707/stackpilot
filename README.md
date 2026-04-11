@@ -19,6 +19,7 @@ The current implemented baseline already covers:
 - org-level review default focus shaping
 - team-style postmortem draft and rendering shaping
 - approved canonical convention gateway for tenant-scoped policy and style docs
+- approval-backed promotion from approved skill candidates into versioned canonical docs
 - explicit finding adoption signals and review-focus draft skill candidates
 
 The next product direction is no longer just "summarize one thread". It is:
@@ -32,7 +33,7 @@ The next product direction is no longer just "summarize one thread". It is:
 Think of the repository in two layers:
 
 1. `Implemented foundation`
-   Feishu-first incident discussion analysis plus manual AI code review, both with structured replies, source-aware evidence, approval-backed actions, tenant-scoped org conventions, approved canonical convention docs, and a draft-only growth kernel.
+   Feishu-first incident discussion analysis plus manual AI code review, both with structured replies, source-aware evidence, approval-backed actions, tenant-scoped org conventions, approved canonical convention docs, and an approval-backed promotion path from approved skill candidates into versioned canonical docs.
 2. `Planned platform`
    A controlled workflow agent that supports incident handling and AI code review on top of shared memory, retrieval, approval, and audit capabilities.
 
