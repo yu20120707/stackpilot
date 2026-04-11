@@ -2,15 +2,16 @@
 
 ## Current Snapshot
 
-- Date: 2026-04-10
-- Phase: P2-002 complete
-- Overall status: the system now supports richer knowledge retrieval, confirmation-gated task sync drafts, reviewable postmortem generation, and live `helpcoder.cc` gateway compatibility through SSE fallback in the LLM adapter
-- Recommended next task: `No remaining planned task in task-board.json`
-- Last known good state: runnable P0/P1/P2 scaffold plus postmortem draft generation, source-aware rendering, live gateway validation against `helpcoder.cc`, and full passing regression coverage
+- Date: 2026-04-11
+- Phase: `EVL-001` complete
+- Overall status: the codebase now has a working file-backed thread memory foundation on top of the incident-analysis baseline, plus aligned roadmap docs for the shared growth kernel and planned AI code review workflow
+- Recommended next task: `RET-001 Upgrade retrieval into planner-router-ranker pipeline`
+- Last known good state: runnable incident-analysis scaffold with explicit thread memory, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and full passing regression coverage
 
 ## Canonical Files
 
 - `rd-incident-ai-assistant-prd.md`
+- `evolving-agent-architecture.md`
 - `tech-spec.md`
 - `schema.md`
 - `api-contracts.md`
@@ -28,21 +29,22 @@
 ## Current Assumptions
 
 - P0 implementation draft stack is `Python 3.11 + FastAPI + Pydantic`
-- P0 works through explicit manual trigger in Feishu
-- P0 uses local knowledge documents only
-- P0 does not require Jira, Redis, or PostgreSQL
+- the current implemented workflow remains explicit manual trigger in Feishu
+- the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
+- the current evidence layer still starts from local controlled knowledge documents
+- high-risk external actions remain approval-gated
 
 ## Open Decisions
 
 - No active product blocker remains for P0 documentation.
-- Live Feishu credentials may still be unavailable when implementation starts.
-- The first runnable pass may use fixture-based validation before live Feishu testing.
+- Live Feishu app credentials may still be unavailable for real tenant validation.
+- The current live Feishu flow assumes webhook payloads are not encrypted at the platform layer.
 
 ## Current Risks
 
-- If implementation work reintroduces automatic incident detection, the scope will drift immediately.
-- If structured output contracts are not enforced, different sessions will generate incompatible reply shapes.
-- If the first code pass skips validation fixtures, later debugging will be slower and less reliable.
+- If implementation work equates "self-evolution" with autonomous code rewriting, the safety boundary will collapse.
+- If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
+- Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
 
 ## Handoff Rules
 
@@ -61,6 +63,73 @@ Required fields:
 - next recommended task
 
 ## Session Log
+
+### Session 016
+
+- Date: 2026-04-11
+- Primary task: `DOC-004`
+- Objective: realign the repository docs and roadmap from an incident-summary-only project to an evolving workflow agent with controlled growth and planned AI code review
+- Files changed:
+  - `README.md`
+  - `rd-incident-ai-assistant-prd.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `agent.md`
+  - `decision-log.md`
+  - `task-board.json`
+  - `progress.md`
+  - `init.ps1`
+- Checks run:
+  - Reviewed current incident flow, growth governance, and task board state
+  - Ran parallel subagent analysis for self-evolution kernel boundaries and AI code review feature inventory
+  - Verified roadmap docs align on proposal-first, approval-backed, audit-first evolution
+- Result:
+  - `DOC-004` complete
+  - The repository now has an explicit shared-kernel roadmap covering incident workflow, controlled growth, and AI code review
+- Blockers:
+  - No implementation yet exists for memory service, approval queue, recorder, or AI code review flow
+  - Existing tech spec and test cases still describe the current implemented incident baseline rather than the full roadmap
+- Next recommended task:
+  - `EVL-001 Add explicit memory foundation for workflow continuity`
+
+### Session 017
+
+- Date: 2026-04-11
+- Primary task: `EVL-001`
+- Objective: add an explicit file-backed thread memory foundation and start low-risk service-structure cleanup for shared kernel capabilities
+- Files changed:
+  - `.env.example`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/thread_reader.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/kernel/__init__.py`
+  - `app/services/kernel/memory_service.py`
+  - `data/memory/.gitkeep`
+  - `schema.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_thread_reader.py`
+  - `tests/test_follow_up_flow.py`
+  - `tests/test_feishu_live_flow.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_thread_reader.py tests/test_follow_up_flow.py tests/test_feishu_live_flow.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_analysis_contracts.py tests/test_feishu_callback.py tests/test_p0_smoke.py tests/test_health.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+  - `powershell -ExecutionPolicy Bypass -File .\\init.ps1`
+- Result:
+  - `EVL-001` complete
+  - Follow-up continuity can now restore previous summary state from local thread memory
+  - Successful structured replies now persist thread memory without breaking heuristic fallback
+  - Shared cross-workflow capabilities now have a dedicated `app/services/kernel/` landing zone
+- Blockers:
+  - Retrieval quality is still keyword-based and needs planner/router/ranker work next
+  - Approval-backed pending-action persistence is not implemented yet
+- Next recommended task:
+  - `RET-001 Upgrade retrieval into planner-router-ranker pipeline`
 
 ### Session 001
 
@@ -556,6 +625,137 @@ Required fields:
   - The provided LLM gateway remains schema-loose, so robust normalization is still required locally
 - Next recommended task:
   - `No remaining planned task in task-board.json`
+
+### Session 018
+
+- Date: 2026-04-10
+- Primary task: `Post-plan live integration`
+- Objective: wire the accepted Feishu callback route into the real async fetch/analyze/reply chain using official Feishu APIs for tenant token acquisition, thread history loading, and in-thread replies
+- Files changed:
+  - `.env`
+  - `.env.example`
+  - `app/api/feishu.py`
+  - `app/clients/feishu_client.py`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/services/feishu_live_flow.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_feishu_client.py`
+  - `tests/test_feishu_live_flow.py`
+  - `task-board.json`
+  - `progress.md`
+- Checks run:
+  - Confirmed official Feishu markdown docs for `tenant_access_token/internal`, `im/v1/messages`, `im/v1/messages/:message_id/reply`, and `im.message.receive_v1`
+  - `uv run pytest tests/test_feishu_client.py tests/test_feishu_callback.py tests/test_feishu_live_flow.py`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1`
+  - Verified `55` full-suite tests passed
+- Result:
+  - The Feishu client now acquires and caches `tenant_access_token`, loads thread history through `GET /im/v1/messages`, and sends replies through `POST /im/v1/messages/:message_id/reply`
+  - The callback route now validates the optional verification token, acknowledges supported triggers, and asynchronously hands accepted events to a live orchestration service
+  - The new live flow composes thread loading, local citation retrieval, analysis generation, reply rendering, and Feishu reply sending without putting business logic into the route
+- Blockers:
+  - Real tenant validation still requires a live Feishu app ID, app secret, webhook subscription, and bot permissions in the target group
+  - Callback payload decryption is still not implemented, so encrypted Feishu event delivery should remain disabled for now
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 019
+
+- Date: 2026-04-10
+- Primary task: `Post-plan usability refinement`
+- Objective: broaden natural-language trigger matching for the live Feishu bot and keep fixture coverage aligned with the stricter verification-token callback flow
+- Files changed:
+  - `app/services/command_parser.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_p0_smoke.py`
+  - `progress.md`
+- Checks run:
+  - `uv run pytest tests/test_command_parser.py tests/test_feishu_callback.py`
+  - `powershell -ExecutionPolicy Bypass -File .\scripts\test.ps1`
+  - Verified local and public `/healthz` both returned `200`
+- Result:
+  - The bot now strips plain-text mention placeholders such as `@_user_1` and `@stackpilot` before matching commands
+  - Incident-analysis triggers now accept broader natural phrasing such as asking for alarm cause or where the issue is, while summarize and rerun commands also accept looser wording
+  - Regression coverage was updated so fixture-based smoke tests remain valid when local callback verification-token checks are enabled in real runtime
+- Blockers:
+  - The current public URL still depends on a temporary quick tunnel and will change after restarting the tunnel process
+  - Stable公网入口 still requires either a named reverse tunnel with your own domain or deploying the service to a cloud host
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 020
+
+- Date: 2026-04-10
+- Primary task: `Post-plan local public endpoint`
+- Objective: keep the app running locally while exposing a stable public HTTPS endpoint through ngrok for webhook-style validation
+- Files changed:
+  - `.env`
+  - `.env.example`
+  - `README.md`
+  - `scripts/start-ngrok.ps1`
+- Checks run:
+  - Installed `ngrok` locally and upgraded the agent from `3.3.1` to `3.37.6`
+  - Verified the local service still returned `{"status":"ok"}` from `http://127.0.0.1:8000/healthz`
+  - Verified the stable public endpoint `https://pebble-expensive-game.ngrok-free.dev/healthz` returned `{"status":"ok"}` with `ngrok-skip-browser-warning: 1`
+  - Verified the same public `/healthz` also returned `{"status":"ok"}` with a non-browser `User-Agent`, matching webhook-style access more closely
+- Result:
+  - The workspace now includes a reusable `scripts/start-ngrok.ps1` helper that can reuse a locally stored ngrok authtoken, requires only `NGROK_DOMAIN`, and clears proxy environment variables before launching the agent
+  - `.env` is configured with the assigned stable ngrok free domain
+  - The local app and stable ngrok public URL were both validated successfully
+- Blockers:
+  - Browser visits to the free ngrok domain still show ngrok's interstitial warning unless the request includes `ngrok-skip-browser-warning`; webhook-style non-browser requests were validated successfully
+  - Long-term stability still depends on the local machine staying online and the ngrok account/domain remaining valid
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 021
+
+- Date: 2026-04-11
+- Primary task: `Post-plan minimal knowledge seeding`
+- Objective: add a minimum set of local incident-analysis knowledge documents so live Feishu analysis no longer depends only on raw thread text
+- Files changed:
+  - `data/knowledge/incident-evidence-checklist.md`
+  - `data/knowledge/release-regression-sop.md`
+  - `data/knowledge/dependency-timeout-playbook.md`
+  - `progress.md`
+- Checks run:
+  - Inline `uv run python` verification that `KnowledgeBase` loaded `3` documents from `data/knowledge`
+  - Inline `uv run python` retrieval check that a release-regression thread returned citations from the new local documents
+  - `uv run pytest tests/test_knowledge_base.py`
+  - `uv run pytest tests/test_p0_smoke.py`
+- Result:
+  - The local knowledge source is no longer empty; the app now has bundled seed documents for evidence collection, release-regression triage, and dependency-timeout troubleshooting
+  - A representative thread containing `发布` / `回滚` / `5xx` / `错误日志` now returns local citations instead of relying only on thread text
+  - Existing knowledge-base tests and P0 smoke tests still pass after the data addition
+- Blockers:
+  - The seeded knowledge is generic incident guidance, not team-specific SOP or service-specific runbooks
+  - Real analysis quality will remain limited until the knowledge directory contains your actual systems, services, and troubleshooting docs
+- Next recommended task:
+  - `Run real Feishu acceptance again and verify cited replies now appear in live incident threads`
+
+### Session 022
+
+- Date: 2026-04-11
+- Primary task: `Post-plan live test scenario seeding`
+- Objective: add more realistic service-specific knowledge docs plus copy-paste live Feishu prompts so manual robot testing is easier and more likely to surface citations
+- Files changed:
+  - `data/knowledge/payment-api-release-runbook.md`
+  - `data/knowledge/session-cache-redis-timeout-runbook.md`
+  - `data/knowledge/order-db-pool-playbook.md`
+  - `tests/live_feishu_robot_prompts.md`
+  - `progress.md`
+- Checks run:
+  - Inline `uv run python` retrieval verification for three representative scenarios: `payment-api` release regression, `session-cache` Redis timeout, and `order-service` DB pool issues
+  - `uv run pytest tests/test_knowledge_base.py tests/test_p0_smoke.py`
+- Result:
+  - The knowledge directory now contains more realistic service-shaped incident references instead of only generic guidance
+  - The repository now includes a copy-paste manual testing script at `tests/live_feishu_robot_prompts.md` for live Feishu threads
+  - Retrieval checks showed the new scenarios now hit service-specific documents, and the existing knowledge/smoke tests still pass
+- Blockers:
+  - Retrieval is still keyword-based, so broad shared terms may produce some cross-service citations
+  - Real usefulness still depends on replacing the seeded demo docs with your actual team SOPs, service runbooks, and common error references
+- Next recommended task:
+  - `Use tests/live_feishu_robot_prompts.md in Feishu and verify whether live replies now show relevant references`
 
 ## Session Template
 

@@ -1,20 +1,27 @@
-# P0 Technical Specification
+# Foundation Technical Specification
 
 ## 1. Scope
 
-This document defines the minimum implementation spec for P0.
+This document defines the current foundation implementation shape for the repository.
 
-P0 goal:
+Original P0 goal:
 
 `A user manually triggers analysis in a Feishu thread, and the system replies in the same thread with a structured summary plus source citations.`
 
-P0 does not include:
+The codebase still preserves that foundation, but the implemented baseline now also includes:
+
+- same-thread follow-up support
+- conclusion summary and todo draft output
+- postmortem draft generation
+- confirmation-gated task-sync contract
+- explicit local thread memory for workflow continuity
+
+Still out of scope for the current foundation:
 
 - automatic incident detection
-- Jira integration
-- external task sync
-- multi-turn memory as a hard requirement
-- hybrid retrieval, reranking, or advanced retrieval optimization
+- autonomous code modification
+- unapproved external execution
+- generic multi-agent orchestration
 
 ## 2. Implementation Draft
 
@@ -35,7 +42,7 @@ Rationale:
 
 ## 3. Repository Layout
 
-Target layout for the first runnable code pass:
+Current layout baseline:
 
 ```text
 app/
@@ -58,6 +65,8 @@ app/
     knowledge_base.py
     analysis_service.py
     reply_renderer.py
+    kernel/
+      memory_service.py
 tests/
   fixtures/
   test_health.py
@@ -65,6 +74,7 @@ tests/
   test_analysis_contracts.py
 data/
   knowledge/
+  memory/
 ```
 
 Module ownership:
@@ -97,6 +107,7 @@ Optional for P0:
 - `LLM_TIMEOUT_SECONDS`
 - `MAX_THREAD_MESSAGES`
 - `MAX_KNOWLEDGE_HITS`
+- `MEMORY_DIR`
 
 Default behavior:
 
@@ -104,6 +115,7 @@ Default behavior:
 - `LLM_TIMEOUT_SECONDS` defaults to `30`
 - `MAX_THREAD_MESSAGES` defaults to `50`
 - `MAX_KNOWLEDGE_HITS` defaults to `5`
+- `MEMORY_DIR` defaults to `data/memory`
 
 ## 5. External Routes
 
@@ -158,7 +170,7 @@ P0 should ignore:
 
 ## 7. Request Flow
 
-One P0 request should move through the system in this order:
+One incident-analysis request currently moves through the system in this order:
 
 1. Feishu callback reaches `/api/feishu/events`
 2. The route validates and normalizes the event
@@ -168,6 +180,7 @@ One P0 request should move through the system in this order:
 6. The analysis service builds the LLM input and requests a structured summary
 7. The reply renderer converts the structured result into user-facing Feishu text
 8. The Feishu client posts the reply back to the same discussion context
+9. The thread memory service persists the latest successful structured summary state
 
 The route layer should not contain business logic beyond validation and normalization.
 
@@ -229,7 +242,7 @@ P0 has no mandatory database requirement.
 Allowed in P0:
 
 - local knowledge files under `data/knowledge`
-- transient in-memory request objects
+- local thread memory files under `data/memory`
 - application logs
 
 Not required in P0:
@@ -253,13 +266,11 @@ P0 should be considered implementable only if the following can be tested:
 
 ## 13. Out Of Scope For This Spec
 
-This P0 spec does not define:
+This foundation spec still does not define:
 
 - automatic incident detection
-- same-thread follow-up memory
-- Jira integration
-- task sync
+- unapproved task execution
 - advanced retrieval
-- postmortem generation
+- AI code review publish flow
 
-Those belong to later milestones and should not be pulled into P0 by default.
+Those belong to later milestones and should not be pulled into the implemented foundation by default.

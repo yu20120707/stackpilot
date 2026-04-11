@@ -1,6 +1,6 @@
 {
   "project": "stackpilot",
-  "last_updated": "2026-04-10",
+  "last_updated": "2026-04-11",
   "status_definitions": {
     "not_started": "No implementation work has begun.",
     "in_progress": "Actively being implemented or refined.",
@@ -370,7 +370,140 @@
         "The draft remains grounded in cited discussion and knowledge sources.",
         "The feature does not weaken the simpler P0/P1 product flow."
       ],
-      "notes": "Completed with a dedicated postmortem draft contract, an LLM-backed service with summary-grounded fallback generation, a reviewable renderer, and fixture-backed tests."
+      "notes": "Completed with a dedicated postmortem draft contract, an LLM-backed service with summary-grounded fallback generation, a reviewable renderer, and fixture-backed tests. Post-plan follow-up later wired the live Feishu callback route into the real fetch/analyze/reply chain."
+    },
+    {
+      "id": "DOC-004",
+      "title": "Realign product docs to evolving workflow agent roadmap",
+      "milestone": "Roadmap",
+      "status": "done",
+      "priority": 14,
+      "depends_on": [
+        "P2-002"
+      ],
+      "deliverables": [
+        "Updated README.md",
+        "Updated PRD",
+        "Updated feature list",
+        "Updated agent contract",
+        "New evolving-agent-architecture.md"
+      ],
+      "acceptance_checks": [
+        "Core docs no longer describe the product as incident-summary-only.",
+        "The roadmap explicitly includes controlled growth and AI code review.",
+        "The repository still preserves approval and audit boundaries."
+      ],
+      "notes": "Completed by repositioning the repository around a controlled workflow agent with incident and AI code review workflows on top of a shared growth kernel."
+    },
+    {
+      "id": "EVL-001",
+      "title": "Add explicit memory foundation for workflow continuity",
+      "milestone": "M1",
+      "status": "done",
+      "priority": 15,
+      "depends_on": [
+        "DOC-004"
+      ],
+      "deliverables": [
+        "Memory service",
+        "Thread memory state model",
+        "User/org memory placeholders",
+        "Persistence path under data/memory"
+      ],
+      "acceptance_checks": [
+        "Follow-up analysis can load explicit thread state instead of relying only on marker heuristics.",
+        "Memory persistence is tenant-safe and thread-safe.",
+        "Current incident flow remains backward-compatible when memory is absent."
+      ],
+      "notes": "Completed with a file-backed memory service under app/services/kernel, explicit thread-memory models, live-flow persistence after successful replies, backward-compatible heuristic fallback, and regression coverage."
+    },
+    {
+      "id": "RET-001",
+      "title": "Upgrade retrieval into planner-router-ranker pipeline",
+      "milestone": "M2",
+      "status": "not_started",
+      "priority": 16,
+      "depends_on": [
+        "EVL-001"
+      ],
+      "deliverables": [
+        "Retrieval planner",
+        "Retrieval router",
+        "Evidence ranker",
+        "Weak-evidence filtering tests"
+      ],
+      "acceptance_checks": [
+        "Release-related incident threads prefer release-note evidence over generic docs.",
+        "Weak evidence no longer bypasses insufficient-context safeguards.",
+        "Retrieval remains deterministic and locally testable."
+      ],
+      "notes": "This milestone implements a lightweight Agentic RAG path without introducing external vector infrastructure."
+    },
+    {
+      "id": "ACT-001",
+      "title": "Add action proposal queue and approval-backed incident actions",
+      "milestone": "M3",
+      "status": "not_started",
+      "priority": 17,
+      "depends_on": [
+        "RET-001"
+      ],
+      "deliverables": [
+        "Pending action model",
+        "Action proposal persistence",
+        "Approval command flow",
+        "Incident action write-back"
+      ],
+      "acceptance_checks": [
+        "Task and postmortem proposals are reviewable before execution.",
+        "High-risk actions require explicit user confirmation.",
+        "Approved actions can be executed and written back to the thread."
+      ],
+      "notes": "This milestone closes the incident workflow loop and makes the project materially stronger for interviews."
+    },
+    {
+      "id": "GRW-001",
+      "title": "Add controlled growth kernel with recorder and skill candidates",
+      "milestone": "M4",
+      "status": "not_started",
+      "priority": 18,
+      "depends_on": [
+        "ACT-001"
+      ],
+      "deliverables": [
+        "Interaction recorder",
+        "Audit log",
+        "Skill candidate registry",
+        "Approval-backed skill lifecycle skeleton"
+      ],
+      "acceptance_checks": [
+        "Workflow runs produce auditable evidence records.",
+        "Reusable patterns can be stored as draft skill candidates.",
+        "No candidate skill becomes active without approval."
+      ],
+      "notes": "This is the self-evolution layer, but implemented as controlled growth rather than autonomous self-modification."
+    },
+    {
+      "id": "CR-001",
+      "title": "Launch AI code review MVP on the shared growth kernel",
+      "milestone": "M5",
+      "status": "not_started",
+      "priority": 19,
+      "depends_on": [
+        "GRW-001"
+      ],
+      "deliverables": [
+        "Code review flow",
+        "Diff normalization",
+        "Structured review findings",
+        "Draft-first review publish flow"
+      ],
+      "acceptance_checks": [
+        "Users can manually submit a diff or patch for review.",
+        "The system returns structured, evidence-backed findings.",
+        "Review publication remains approval-gated."
+      ],
+      "notes": "The first AI code review milestone should focus on findings and review drafts, not automatic fixes or autonomous code modification."
     }
   ]
 }

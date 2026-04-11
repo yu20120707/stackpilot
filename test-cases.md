@@ -42,6 +42,7 @@ Recommended fixture types:
 | T-010 | Feishu reply formatting | Manual + snapshot | Yes |
 | T-011 | End-to-end fixture flow | Automated | Yes |
 | T-012 | Unsupported chatter no-op | Automated | Yes |
+| T-013 | Explicit thread memory continuity | Automated | Post-P0 |
 
 ## 4. Detailed Test Cases
 
@@ -251,6 +252,23 @@ Expected result:
 
 - No analysis request is created
 - No reply is generated
+
+### T-013 Explicit Thread Memory Continuity
+
+Goal:
+
+- Confirm follow-up continuity can come from explicit persisted thread state instead of reply-text heuristics alone.
+
+Input:
+
+- Existing thread memory state
+- Follow-up trigger in the same thread
+
+Expected result:
+
+- The service restores the previous summary from thread memory
+- Only messages after the previous processed cursor are treated as new
+- When memory is absent, the old heuristic path still degrades safely
 
 ## 5. Manual Verification Checklist
 

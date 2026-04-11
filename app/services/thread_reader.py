@@ -3,16 +3,26 @@ from app.models.contracts import (
     AnalysisRequest,
     FeishuThreadMessageRecord,
     FollowUpContext,
+    FollowUpSource,
     NormalizedFeishuMessageEvent,
     ThreadMessage,
+    ThreadMemoryState,
     TriggerCommand,
 )
 from app.services.command_parser import is_follow_up_trigger
+from app.services.kernel.memory_service import MemoryService
 
 
 class ThreadReader:
-    def __init__(self, feishu_client: FeishuClient, max_thread_messages: int = 50) -> None:
+    def __init__(
+        self,
+        feishu_client: FeishuClient,
+        *,
+        memory_service: MemoryService | None = None,
+        max_thread_messages: int = 50,
+    ) -> None:
         self.feishu_client = feishu_client
+        self.memory_service = memory_service
         self.max_thread_messages = max_thread_messages
 
     async def load_thread(
@@ -55,6 +65,7 @@ class ThreadReader:
             thread_messages=thread_messages,
             follow_up_context=self._build_follow_up_context(
                 trigger_command=trigger_command,
+                trigger_event=trigger_event,
                 thread_messages=thread_messages,
             ),
         )
@@ -100,16 +111,25 @@ class ThreadReader:
         self,
         *,
         trigger_command: TriggerCommand,
+        trigger_event: NormalizedFeishuMessageEvent,
         thread_messages: list[ThreadMessage],
     ) -> FollowUpContext | None:
         if not is_follow_up_trigger(trigger_command):
             return None
+
+        memory_context = self._build_memory_follow_up_context(
+            trigger_event=trigger_event,
+            thread_messages=thread_messages,
+        )
+        if memory_context is not None:
+            return memory_context
 
         previous_summary_index = self._find_previous_summary_index(thread_messages)
         if previous_summary_index is None:
             return FollowUpContext(
                 previous_summary=None,
                 new_messages=thread_messages[-3:],
+                source=FollowUpSource.HEURISTIC,
             )
 
         previous_summary = thread_messages[previous_summary_index].text
@@ -117,7 +137,68 @@ class ThreadReader:
         return FollowUpContext(
             previous_summary=previous_summary,
             new_messages=new_messages,
+            source=FollowUpSource.HEURISTIC,
         )
+
+    def _build_memory_follow_up_context(
+        self,
+        *,
+        trigger_event: NormalizedFeishuMessageEvent,
+        thread_messages: list[ThreadMessage],
+    ) -> FollowUpContext | None:
+        if self.memory_service is None:
+            return None
+
+        scope = self.memory_service.resolve_scope(trigger_event)
+        thread_state = self.memory_service.load_thread_state(scope)
+        if thread_state is None or not thread_state.last_summary_text:
+            return None
+
+        new_messages = self._slice_new_messages_from_thread_state(
+            thread_messages=thread_messages,
+            thread_state=thread_state,
+        )
+        if new_messages is None:
+            return None
+
+        return FollowUpContext(
+            previous_summary=thread_state.last_summary_text,
+            new_messages=new_messages,
+            source=FollowUpSource.MEMORY,
+        )
+
+    def _slice_new_messages_from_thread_state(
+        self,
+        *,
+        thread_messages: list[ThreadMessage],
+        thread_state: ThreadMemoryState,
+    ) -> list[ThreadMessage] | None:
+        candidate_messages: list[ThreadMessage] | None = None
+
+        if thread_state.last_processed_message_id:
+            for index, message in enumerate(thread_messages):
+                if message.message_id == thread_state.last_processed_message_id:
+                    candidate_messages = thread_messages[index + 1 :]
+                    break
+
+        if candidate_messages is None and thread_state.last_processed_at is not None:
+            candidate_messages = [
+                message
+                for message in thread_messages
+                if message.sent_at > thread_state.last_processed_at
+            ]
+
+        if candidate_messages is None:
+            return None
+
+        if thread_state.last_summary_message_id:
+            candidate_messages = [
+                message
+                for message in candidate_messages
+                if message.message_id != thread_state.last_summary_message_id
+            ]
+
+        return candidate_messages
 
     def _find_previous_summary_index(self, thread_messages: list[ThreadMessage]) -> int | None:
         for index in range(len(thread_messages) - 1, -1, -1):

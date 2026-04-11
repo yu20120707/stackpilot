@@ -38,12 +38,38 @@ Field rules:
 - `user_id`: required string
 - `user_display_name`: optional string
 - `thread_messages`: required non-empty array
+- `follow_up_context`: optional object for summarize/rerun flows
 
 Supported `trigger_command` values in P0:
 
 - `analyze_incident`
 - `summarize_thread`
 - `rerun_analysis`
+
+## 2.1 Follow-Up Context
+
+Current follow-up requests may also carry:
+
+```json
+{
+  "previous_summary": "当前判断：支付服务异常可能与最近发布有关。",
+  "new_messages": [
+    {
+      "message_id": "om_2",
+      "sender_name": "Alice",
+      "sent_at": "2026-04-10T01:05:00+08:00",
+      "text": "补充信息：回滚后错误率继续下降"
+    }
+  ],
+  "source": "memory"
+}
+```
+
+Field rules:
+
+- `previous_summary`: optional string
+- `new_messages`: required array, may be empty
+- `source`: optional enum: `memory` or `heuristic`
 
 ## 3. Thread Message Item
 
@@ -276,6 +302,44 @@ Field rules:
 - `thread_id`: required string
 - `result_status`: required enum aligned with `StructuredSummary.status`
 - `summary`: required object for successful and insufficient-context paths
+
+## 10.1 Memory Models
+
+The implemented foundation now includes explicit local thread memory.
+
+Thread memory example:
+
+```json
+{
+  "schema_version": 1,
+  "last_summary_text": "当前判断：支付服务异常可能与最近发布有关。",
+  "last_summary_message_id": "om_bot_1",
+  "last_processed_message_id": "om_3",
+  "last_processed_at": "2026-04-10T01:06:00+08:00",
+  "last_trigger_command": "analyze_incident",
+  "last_summary_status": "success",
+  "updated_at": "2026-04-10T01:07:00+08:00",
+  "known_facts": [
+    "已执行回滚"
+  ],
+  "open_questions": [
+    "详细错误日志"
+  ]
+}
+```
+
+Field rules:
+
+- `schema_version`: required integer
+- `last_summary_text`: optional string
+- `last_summary_message_id`: optional string
+- `last_processed_message_id`: optional string
+- `last_processed_at`: optional ISO-8601 string
+- `last_trigger_command`: optional trigger enum
+- `last_summary_status`: optional result-status enum
+- `updated_at`: required ISO-8601 string
+- `known_facts`: required array of strings
+- `open_questions`: required array of strings
 
 ## 11. Null And Empty Rules
 
