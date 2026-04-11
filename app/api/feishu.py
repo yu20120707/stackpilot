@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 
 from app.core.logging import get_logger
 from app.models.contracts import (
@@ -10,6 +10,7 @@ from app.models.contracts import (
     CallbackResult,
     FeishuVerificationRequest,
     NormalizedFeishuMessageEvent,
+    TriggerCommand,
 )
 from app.services.command_parser import parse_trigger_command
 
@@ -20,30 +21,66 @@ SUPPORTED_EVENT_TYPES = {"im.message.receive_v1", "message"}
 
 
 @router.post("/events")
-async def handle_feishu_events(request: Request) -> dict[str, Any]:
+async def handle_feishu_events(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
     payload = await _load_request_payload(request)
     if payload is None:
+        logger.info("Feishu callback ignored: callback_parse_failed")
         return _safe_ignore_response("callback_parse_failed")
+
+    expected_token = _extract_expected_verification_token(request)
+    if expected_token and not _has_valid_callback_token(payload, expected_token):
+        logger.info("Feishu callback ignored: invalid_verification_token")
+        return _safe_ignore_response("invalid_verification_token")
 
     verification_request = _parse_verification_request(payload)
     if verification_request is not None:
+        logger.info("Feishu callback verification challenge accepted.")
         return {"challenge": verification_request.challenge}
 
     normalized_event = _parse_message_event(payload)
     if normalized_event is None:
+        logger.info(
+            "Feishu callback ignored: unsupported_event event_type=%s",
+            _extract_event_type(payload),
+        )
         return _safe_ignore_response("unsupported_event")
 
     if _is_direct_message(payload):
+        logger.info(
+            "Feishu callback ignored: unsupported_context message_id=%s",
+            normalized_event.message_id,
+        )
         return _safe_ignore_response("unsupported_context")
 
     trigger_command = parse_trigger_command(normalized_event.message_text)
     if trigger_command is None:
+        logger.info(
+            "Feishu callback ignored: unsupported_message message_id=%s text=%r",
+            normalized_event.message_id,
+            normalized_event.message_text,
+        )
         return _safe_ignore_response("unsupported_message")
 
     result = CallbackResult(
         status=CallbackHandlingStatus.ACCEPTED,
         trigger_command=trigger_command,
         message_event=normalized_event,
+    )
+    logger.info(
+        "Feishu callback accepted: command=%s chat_id=%s thread_id=%s message_id=%s",
+        trigger_command.value,
+        normalized_event.chat_id,
+        normalized_event.thread_id,
+        normalized_event.message_id,
+    )
+    _queue_live_flow(
+        request=request,
+        background_tasks=background_tasks,
+        trigger_command=trigger_command,
+        normalized_event=normalized_event,
     )
     return {"code": 0, "msg": "ok", "data": result.model_dump(mode="json")}
 
@@ -71,9 +108,7 @@ def _parse_verification_request(payload: dict[str, Any]) -> FeishuVerificationRe
         logger.warning("Feishu verification payload missing challenge.")
         return None
 
-    token = payload.get("token")
-    if token is not None and not isinstance(token, str):
-        token = None
+    token = _extract_callback_token(payload)
 
     return FeishuVerificationRequest(challenge=challenge, token=token)
 
@@ -250,3 +285,55 @@ def _safe_ignore_response(reason: str) -> dict[str, Any]:
         reason=reason,
     )
     return {"code": 0, "msg": "ok", "data": result.model_dump(mode="json")}
+
+
+def _extract_expected_verification_token(request: Request) -> str | None:
+    settings = getattr(request.app.state, "settings", None)
+    if settings is None:
+        return None
+
+    configured_token = getattr(settings, "feishu_verification_token", None)
+    return _pick_non_empty_string(configured_token)
+
+
+def _has_valid_callback_token(payload: dict[str, Any], expected_token: str) -> bool:
+    callback_token = _extract_callback_token(payload)
+    if callback_token is None:
+        logger.warning("Feishu callback payload did not contain a verification token.")
+        return False
+
+    if callback_token != expected_token:
+        logger.warning("Feishu callback token mismatch.")
+        return False
+
+    return True
+
+
+def _extract_callback_token(payload: dict[str, Any]) -> str | None:
+    header = payload.get("header")
+    if isinstance(header, dict):
+        token = _pick_non_empty_string(header.get("token"))
+        if token:
+            return token
+
+    return _pick_non_empty_string(payload.get("token"))
+
+
+def _queue_live_flow(
+    *,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    trigger_command: TriggerCommand,
+    normalized_event: NormalizedFeishuMessageEvent,
+) -> None:
+    services = getattr(request.app.state, "services", None)
+    live_flow = getattr(services, "feishu_live_flow", None)
+    if live_flow is None:
+        logger.warning("Feishu callback accepted but no live flow service is configured.")
+        return
+
+    background_tasks.add_task(
+        live_flow.process_trigger,
+        trigger_command=trigger_command,
+        trigger_event=normalized_event,
+    )

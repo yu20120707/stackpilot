@@ -106,3 +106,39 @@ Copy this format for new confirmed decisions.
   - `progress.md`
 - Revisit when:
   - a stable repeatable workflow exists for promoting candidate skills into a maintained skill library
+
+### DEC-006
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: the project scope expands from an incident-only assistant into a controlled workflow agent with two first-class workflows: `incident` and `AI code review`.
+- Why: both workflows share the same real backend problems: explicit state, evidence quality, approval gating, audit, and reusable team patterns.
+- Alternatives considered:
+  - keep the product incident-only
+  - reframe the repository as a generic multi-agent platform
+- Impacted files:
+  - `rd-incident-ai-assistant-prd.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `README.md`
+  - `agent.md`
+- Revisit when:
+  - the second workflow materially slows delivery of the shared kernel
+
+### DEC-007
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: self-evolution may affect memory, skill candidates, reuse policy, and proposal generation, but it may not directly rewrite canonical docs, mutate contracts silently, or auto-modify product source code.
+- Why: the project needs a credible "growth" story without creating an unsafe or non-explainable system.
+- Alternatives considered:
+  - autonomous self-modification of main product logic
+  - no growth capabilities beyond session notes
+- Impacted files:
+  - `rd-incident-ai-assistant-prd.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `agent.md`
+  - `README.md`
+- Revisit when:
+  - there is a mature approval, rollback, and evaluation system strong enough to justify broader automation

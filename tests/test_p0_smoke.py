@@ -21,6 +21,11 @@ from app.clients.feishu_client import FeishuClient
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def disable_verification_token_check(monkeypatch) -> None:
+    monkeypatch.setattr(app.state.settings, "feishu_verification_token", None)
+
+
 def load_json(*relative_parts: str) -> dict:
     return json.loads((FIXTURES_DIR.joinpath(*relative_parts)).read_text(encoding="utf-8"))
 

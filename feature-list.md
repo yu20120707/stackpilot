@@ -1,381 +1,227 @@
-# P0 Feature List
+# Feature List
 
 ## 1. Purpose
 
-This document turns the PRD into a concrete functional checklist for P0.
+This document defines the product-level feature inventory for the next version of `stackpilot`.
 
-P0 only needs to prove one product loop:
+Current codebase reality:
 
-`用户在飞书线程中手动触发 -> 系统整理当前讨论并引用依据 -> 系统回一条结构化摘要`
+- the implemented foundation is still `Feishu incident analysis`
+- the next roadmap is `controlled growth + action loop + AI code review`
 
-This is not a generic roadmap. It is the implementation-facing functional boundary for the first working version.
+This file therefore serves two purposes:
 
-## 2. Scope
+1. preserve the already-proven incident foundation
+2. define the next feature boundaries without drifting into an unsafe generic agent platform
 
-Detailed scope in this document:
+## 2. Product Frame
 
-- P0 detailed feature list
-- P0 non-goals
-- P1 and P2 only as lightweight placeholders
+Target product:
 
-Out of scope for detailed implementation here:
+`An evolving workflow agent for R&D teams, centered on incident collaboration and AI-assisted code review.`
 
-- Jira sync
-- automatic incident detection
-- hybrid retrieval
-- long-term task orchestration
+Shared rule:
 
-## 3. P0 Functional Inventory
+- every high-risk action is proposal-first
+- every reusable pattern is candidate-first
+- every evolution step is auditable
 
-| ID | Feature | Priority | Required In P0 | Mock Allowed |
-| --- | --- | --- | --- | --- |
-| F-001 | Feishu manual trigger | P0 | Yes | No |
-| F-002 | Callback validation and safe ignore | P0 | Yes | No |
-| F-003 | Current thread loading | P0 | Yes | Yes |
-| F-004 | Thread normalization | P0 | Yes | No |
-| F-005 | Local knowledge loading | P0 | Yes | Yes |
-| F-006 | Citation lookup | P0 | Yes | Yes |
-| F-007 | Structured summary generation | P0 | Yes | Yes |
-| F-008 | Insufficient-context degraded reply | P0 | Yes | Yes |
-| F-009 | Feishu thread reply rendering | P0 | Yes | No |
-| F-010 | Health check and runtime readiness | P0 | Yes | No |
+## 3. Feature Groups
 
-## 4. P0 Detailed Feature Definitions
+There are now four feature groups:
 
-### F-001 Feishu Manual Trigger
+- `Foundation`: implemented incident-analysis baseline
+- `Incident Workflow`: next incident-specific upgrades
+- `Growth Kernel`: shared controlled-learning capabilities
+- `AI Code Review`: second workflow built on the same kernel
 
-Goal:
+## 4. Foundation Inventory
 
-- Let a user explicitly request analysis inside a Feishu message or thread.
+These capabilities already exist and remain the base layer.
 
-User-visible trigger examples:
+| ID | Feature | Status | Purpose |
+| --- | --- | --- | --- |
+| FD-001 | Feishu manual trigger | Implemented | Start analysis from an explicit user command |
+| FD-002 | Thread loading and normalization | Implemented | Build a stable request from discussion context |
+| FD-003 | Local knowledge retrieval | Implemented | Return source-aware evidence from controlled docs |
+| FD-004 | Structured incident summary | Implemented | Produce current assessment, facts, impact, actions, and citations |
+| FD-005 | Follow-up summary output | Implemented | Support rerun and summarize-thread flows |
+| FD-006 | Todo draft generation | Implemented | Generate task suggestions from discussion state |
+| FD-007 | Confirmation-gated task sync contract | Implemented | Keep external task execution under manual approval |
+| FD-008 | Postmortem draft generation | Implemented | Produce reviewable post-incident draft output |
 
-- `@机器人 分析一下这次故障`
-- `@机器人 帮我总结当前结论`
-- `@机器人 基于最新信息重试`
+## 5. Incident Workflow Features
 
-Inputs:
+These are the next incident-domain upgrades.
 
-- Feishu callback payload
-- bot mention or supported command text
+| ID | Feature | Priority | Summary |
+| --- | --- | --- | --- |
+| INC-001 | Explicit thread memory | High | Replace marker-based follow-up inference with persisted thread state |
+| INC-002 | User and org memory | Medium | Store stable output preferences and team conventions |
+| INC-003 | Retrieval planning and routing | High | Upgrade keyword retrieval into planner, router, and evidence ranking |
+| INC-004 | Evidence quality threshold | High | Prevent weak citations from being treated as sufficient proof |
+| INC-005 | Action proposal queue | High | Persist task and postmortem proposals before confirmation |
+| INC-006 | Approval-backed action execution | High | Confirm, execute, and write back external task results |
+| INC-007 | Incident interaction recorder | Medium | Record trigger, output, correction, approval, and adoption signals |
+| INC-008 | Team-style postmortem output | Medium | Let approved team conventions shape draft structure |
 
-Outputs:
-
-- One accepted analysis request
-- Or safe ignore when the message is unsupported
-
-Normal behavior:
-
-- Accept only supported explicit commands
-- Anchor analysis to the message or thread where the user triggered it
-
-Abnormal behavior:
-
-- Ignore unrelated chatter
-- Ignore unsupported message content safely
-- Do not invent a trigger from ordinary discussion
-
-Done criteria:
-
-- Supported commands can be recognized consistently
-- Unsupported messages do not enter the analysis path
-
-### F-002 Callback Validation And Safe Ignore
+### INC-001 Explicit Thread Memory
 
 Goal:
 
-- Handle Feishu callback traffic safely before business logic begins.
+- preserve same-thread continuity through explicit persisted state
 
-Inputs:
+User-visible outcome:
 
-- URL verification payloads
-- subscribed event payloads
+- follow-up requests become more stable and less sensitive to reply text shape
 
-Outputs:
-
-- Verification response when required
-- Accepted message event
-- Safe no-op for irrelevant events
-
-Normal behavior:
-
-- Respond to platform verification correctly
-- Acknowledge supported message callbacks
-
-Abnormal behavior:
-
-- Missing required event fields must not crash the service
-- Unknown event types must be ignored with logs
-
-Done criteria:
-
-- Callback route supports verification and message event handling
-- Invalid events are contained and do not break the process
-
-### F-003 Current Thread Loading
+### INC-003 Retrieval Planning And Routing
 
 Goal:
 
-- Read the current Feishu discussion context that the user wants analyzed.
+- turn retrieval into a source-aware evidence pipeline
 
-Inputs:
+User-visible outcome:
 
-- trigger message id
-- thread id or equivalent discussion anchor
+- incident replies cite more relevant runbooks, release notes, and policy sources
 
-Outputs:
-
-- ordered raw thread messages
-
-Normal behavior:
-
-- Load the message that was triggered and the visible thread context around it
-
-Abnormal behavior:
-
-- Empty thread should still produce a usable fallback analysis request
-- Partial thread load failure should result in a degraded but safe response
-
-Done criteria:
-
-- One trigger can consistently resolve to one current discussion context
-
-### F-004 Thread Normalization
+### INC-005 Action Proposal Queue
 
 Goal:
 
-- Convert raw Feishu message data into one stable internal analysis contract.
+- make action generation reviewable before execution
 
-Inputs:
+User-visible outcome:
 
-- raw thread messages
+- users first see a draft package, then decide whether to execute it
 
-Outputs:
+## 6. Growth Kernel Features
 
-- normalized `AnalysisRequest` object defined by `schema.md`
+These features are shared by incident and code-review workflows.
 
-Normal behavior:
+| ID | Feature | Priority | Summary |
+| --- | --- | --- | --- |
+| GR-001 | Evidence ledger | High | Record factual workflow outcomes, corrections, and acceptance signals |
+| GR-002 | Memory layer | High | Support thread, user, and org-level reusable context |
+| GR-003 | Approval policy | High | Centralize rules for risky actions and behavior changes |
+| GR-004 | Audit log and rollback | High | Make every promotion and execution traceable and reversible |
+| GR-005 | Skill candidate registry | Medium | Store draft reusable workflow patterns |
+| GR-006 | Skill approval lifecycle | Medium | Promote skills through draft, approved, active, retired states |
+| GR-007 | Evaluation and feedback loop | Medium | Score which behaviors helped, failed, or were corrected |
+| GR-008 | Canonical knowledge gateway | High | Keep product truth anchored to approved docs, not chat memory |
 
-- Preserve message order
-- Preserve sender and time information
-- Keep only text useful for analysis
-
-Abnormal behavior:
-
-- Missing sender names or malformed timestamps must degrade safely
-- Empty text content must be filtered or normalized, not passed through blindly
-
-Done criteria:
-
-- All downstream modules can rely on one normalized request shape
-
-### F-005 Local Knowledge Loading
+### GR-001 Evidence Ledger
 
 Goal:
 
-- Make a controlled knowledge source available for P0.
+- capture what actually happened in real runs
 
-Inputs:
+Included evidence:
 
-- `KNOWLEDGE_DIR`
-- local Markdown or text files
+- trigger
+- output snapshot
+- user correction
+- approval action
+- execution result
+- adoption signal
 
-Outputs:
-
-- available knowledge items for retrieval
-
-Normal behavior:
-
-- Read local docs at startup or on demand
-- Expose enough metadata to cite the source later
-
-Abnormal behavior:
-
-- Missing knowledge directory must not crash the service
-- Unreadable files should be skipped with logs
-
-Done criteria:
-
-- The service can see at least one local knowledge source when configured
-
-### F-006 Citation Lookup
+### GR-005 Skill Candidate Registry
 
 Goal:
 
-- Provide source-backed evidence to support the summary.
+- let the system suggest reusable skills without silently activating them
 
-Inputs:
+Constraint:
 
-- normalized thread context
-- local knowledge items
+- first output is a candidate, not a rule
 
-Outputs:
+## 7. AI Code Review Features
 
-- zero or more citation candidates
+This is the second workflow built on the shared kernel.
 
-Normal behavior:
+| ID | Feature | Priority | Summary |
+| --- | --- | --- | --- |
+| CR-001 | Manual review trigger | High | Start review from explicit diff, patch, commit range, or PR input |
+| CR-002 | Diff normalization | High | Convert raw patch data into a stable internal review request |
+| CR-003 | Structured review findings | High | Output findings grouped by risk instead of free-form prose |
+| CR-004 | Evidence-backed comments | High | Bind each finding to file, hunk, or policy evidence |
+| CR-005 | Safe degraded review reply | High | Admit uncertainty when diff or context is incomplete |
+| CR-006 | Review policy routing | Medium | Let teams choose review focus such as bug risk or test gaps |
+| CR-007 | Draft-first publish flow | High | Preview findings before posting to an external review system |
+| CR-008 | Adoption recording | Medium | Track which findings were accepted or ignored |
+| CR-009 | Review preference memory | Medium | Learn stable review-output preferences per user or team |
+| CR-010 | Review skill candidates | Low | Propose reusable review patterns from accepted findings |
 
-- Return a bounded list of the most relevant evidence snippets
-
-Abnormal behavior:
-
-- No knowledge hit must be allowed
-- No result must not be turned into fake evidence
-
-Done criteria:
-
-- Citation objects follow `schema.md`
-- The analysis layer can attach them to the final reply
-
-### F-007 Structured Summary Generation
+### CR-001 Manual Review Trigger
 
 Goal:
 
-- Produce one structured summary that a user can act on quickly.
+- preserve explicit user control over code review entry
 
-Inputs:
+Included inputs:
 
-- normalized thread context
-- citation candidates
+- `git diff`
+- patch text
+- commit range
+- PR patch
 
-Outputs:
-
-- `StructuredSummary` defined by `schema.md`
-
-Required summary fields:
-
-- `current_assessment`
-- `known_facts`
-- `impact_scope`
-- `next_actions`
-- `citations`
-- `missing_information`
-
-Normal behavior:
-
-- Generate a concise and readable summary
-- Use citations when evidence exists
-
-Abnormal behavior:
-
-- Weak evidence must lower certainty, not inflate confidence
-- Missing information must be explicit
-
-Done criteria:
-
-- Output shape is stable
-- User-visible sections match the PRD
-
-### F-008 Insufficient-Context Degraded Reply
+### CR-003 Structured Review Findings
 
 Goal:
 
-- Respond safely when the system cannot support a strong conclusion.
+- produce compact, defensible findings instead of generic review summaries
 
-Inputs:
+Expected output shape:
 
-- incomplete thread context
-- weak or empty citations
-- temporary analysis errors
+- overall assessment
+- concrete findings
+- risk level
+- evidence reference
+- missing context
 
-Outputs:
-
-- `insufficient_context` summary
-- or `temporary_failure` reply
-
-Normal behavior:
-
-- Explain what is known
-- Explain what is missing
-- Suggest retry or additional input
-
-Abnormal behavior:
-
-- Never fabricate a precise cause from weak evidence
-
-Done criteria:
-
-- P0 has a safe fallback for low-evidence and temporary-failure cases
-
-### F-009 Feishu Thread Reply Rendering
+### CR-007 Draft-First Publish Flow
 
 Goal:
 
-- Return the result in a format users can immediately consume in Feishu.
+- separate analysis from publication
 
-Inputs:
+User-visible outcome:
 
-- `StructuredSummary` or `TemporaryFailureReply`
+- review output can stay as a draft or be explicitly published after approval
 
-Outputs:
+## 8. Milestone Plan
 
-- one formatted Feishu reply body
+| Milestone | Focus | Primary Features |
+| --- | --- | --- |
+| M1 | Stabilize incident continuity | INC-001, GR-001, GR-002 |
+| M2 | Improve evidence quality | INC-003, INC-004 |
+| M3 | Close the incident action loop | INC-005, INC-006, GR-003, GR-004 |
+| M4 | Activate controlled growth | GR-005, GR-006, GR-007, GR-008 |
+| M5 | Launch AI code review MVP | CR-001, CR-002, CR-003, CR-004, CR-005, CR-007 |
+| M6 | Grow review reuse safely | CR-006, CR-008, CR-009, CR-010 |
 
-Normal behavior:
+## 9. Explicit Non-Goals
 
-- Keep sections visually clear
-- Reply in the same discussion context as the trigger
+These features are out of scope unless explicitly re-opened:
 
-Abnormal behavior:
+- autonomous full-repo review scanning
+- automatic code fixing and commit submission
+- automatic publication of external comments or tasks without confirmation
+- self-rewriting canonical docs
+- automatic schema or prompt-boundary mutation
+- generic multi-agent orchestration as a product goal
+- unbounded external dependency expansion
+- cross-tenant sharing of memory or skills
 
-- If summary rendering fails, the service should still send a minimal failure notice when possible
+## 10. Acceptance Rule
 
-Done criteria:
+Any new feature should satisfy at least one of these outcomes:
 
-- Users can read the result without opening another tool
+- better incident continuity
+- better evidence quality
+- safer external action handling
+- stronger auditability
+- more reusable approved workflow knowledge
+- more useful code review assistance
 
-### F-010 Health Check And Runtime Readiness
-
-Goal:
-
-- Provide a minimal runtime signal for local development and deployment.
-
-Inputs:
-
-- none
-
-Outputs:
-
-- `/healthz` response
-
-Done criteria:
-
-- Service can expose a simple liveness endpoint
-
-## 5. P0 Non-Goals
-
-These features are explicitly excluded from P0:
-
-- automatic incident detection
-- same-thread memory as a hard requirement
-- Jira or external task sync
-- task state machine
-- hybrid retrieval
-- reranking
-- postmortem draft generation
-
-## 6. P1 Placeholder Features
-
-These are not detailed for implementation yet, but reserved in product scope:
-
-- F-P1-001 same-thread follow-up analysis
-- F-P1-002 conclusion summary
-- F-P1-003 todo draft generation
-
-## 7. P2 Placeholder Features
-
-- F-P2-001 external task sync
-- F-P2-002 richer knowledge sources
-- F-P2-003 postmortem draft generation
-
-## 8. Acceptance Mapping
-
-Each P0 feature should map back to these product promises:
-
-- Manual trigger in Feishu
-- Thread-scoped analysis
-- Source-backed summary
-- Safe degraded behavior
-- Result returned in the same thread
-
-If a code change does not help one of the above, it likely does not belong in P0.
+If a proposed feature does not improve one of the six outcomes above, it should not enter the roadmap.

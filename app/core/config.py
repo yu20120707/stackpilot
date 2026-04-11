@@ -17,12 +17,20 @@ class Settings(BaseSettings):
     log_level: str = Field(..., validation_alias="LOG_LEVEL")
     feishu_app_id: str = Field(..., validation_alias="FEISHU_APP_ID")
     feishu_app_secret: str = Field(..., validation_alias="FEISHU_APP_SECRET")
+    feishu_base_url: str = Field(
+        default="https://open.feishu.cn/open-apis",
+        validation_alias="FEISHU_BASE_URL",
+    )
     llm_base_url: str = Field(..., validation_alias="LLM_BASE_URL")
     llm_api_key: str = Field(..., validation_alias="LLM_API_KEY")
     llm_model: str = Field(..., validation_alias="LLM_MODEL")
     knowledge_dir: Path = Field(
         default=Path("data/knowledge"),
         validation_alias="KNOWLEDGE_DIR",
+    )
+    memory_dir: Path = Field(
+        default=Path("data/memory"),
+        validation_alias="MEMORY_DIR",
     )
 
     feishu_encrypt_key: str | None = Field(
@@ -36,6 +44,11 @@ class Settings(BaseSettings):
     llm_timeout_seconds: int = Field(
         default=30,
         validation_alias="LLM_TIMEOUT_SECONDS",
+        ge=1,
+    )
+    feishu_timeout_seconds: int = Field(
+        default=30,
+        validation_alias="FEISHU_TIMEOUT_SECONDS",
         ge=1,
     )
     max_thread_messages: int = Field(
@@ -54,6 +67,7 @@ class Settings(BaseSettings):
         "log_level",
         "feishu_app_id",
         "feishu_app_secret",
+        "feishu_base_url",
         "llm_base_url",
         "llm_api_key",
         "llm_model",
@@ -89,9 +103,23 @@ class Settings(BaseSettings):
             return Path("data/knowledge")
         return Path(normalized)
 
+    @field_validator("memory_dir", mode="before")
+    @classmethod
+    def normalize_memory_dir(cls, value: str | Path) -> Path:
+        if isinstance(value, Path):
+            return value
+        normalized = value.strip()
+        if not normalized:
+            return Path("data/memory")
+        return Path(normalized)
+
     @property
     def resolved_knowledge_dir(self) -> Path:
         return self.knowledge_dir.resolve()
+
+    @property
+    def resolved_memory_dir(self) -> Path:
+        return self.memory_dir.resolve()
 
 
 @lru_cache

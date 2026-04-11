@@ -11,6 +11,7 @@ from app.models.contracts import (
     AnalysisResultStatus,
     ConfidenceLevel,
     FeishuThreadLoadResponse,
+    FollowUpSource,
     KnowledgeCitation,
     NormalizedFeishuMessageEvent,
     SourceType,
@@ -93,6 +94,7 @@ async def test_thread_reader_extracts_follow_up_context_from_same_thread() -> No
 
     assert request.follow_up_context is not None
     assert request.follow_up_context.previous_summary is not None
+    assert request.follow_up_context.source is FollowUpSource.HEURISTIC
     assert "当前判断：" in request.follow_up_context.previous_summary
     assert [message.message_id for message in request.follow_up_context.new_messages] == ["om_2", "om_3"]
 

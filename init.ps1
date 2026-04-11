@@ -5,6 +5,7 @@ $workspace = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 $requiredFiles = @(
     "rd-incident-ai-assistant-prd.md",
+    "evolving-agent-architecture.md",
     "tech-spec.md",
     "schema.md",
     "api-contracts.md",
@@ -85,16 +86,17 @@ if ($null -ne $nextTask) {
 Write-Host ""
 Write-Host "Startup checklist:"
 Write-Host "1. Read rd-incident-ai-assistant-prd.md"
-Write-Host "2. Read tech-spec.md"
-Write-Host "3. Read schema.md"
-Write-Host "4. Read api-contracts.md"
-Write-Host "5. Read prompts.md"
-Write-Host "6. Read feature-list.md"
-Write-Host "7. Read test-cases.md"
-Write-Host "8. Read evolution-policy.md"
-Write-Host "9. Read session-playbook.md"
-Write-Host "10. Read decision-log.md"
-Write-Host "11. Read task-board.json and confirm the primary task"
-Write-Host "12. Read the latest session in progress.md"
-Write-Host "13. Implement only one primary task"
-Write-Host "14. Record evidence before marking any task done"
+Write-Host "2. Read evolving-agent-architecture.md"
+Write-Host "3. Read tech-spec.md"
+Write-Host "4. Read schema.md"
+Write-Host "5. Read api-contracts.md"
+Write-Host "6. Read prompts.md"
+Write-Host "7. Read feature-list.md"
+Write-Host "8. Read test-cases.md"
+Write-Host "9. Read evolution-policy.md"
+Write-Host "10. Read session-playbook.md"
+Write-Host "11. Read decision-log.md"
+Write-Host "12. Read task-board.json and confirm the primary task"
+Write-Host "13. Read the latest session in progress.md"
+Write-Host "14. Implement only one primary task"
+Write-Host "15. Record evidence before marking any task done"

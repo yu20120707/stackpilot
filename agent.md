@@ -2,17 +2,21 @@
 
 ## 1. Purpose
 
-This file defines the minimum harness for this project so future AI coding sessions do not drift.
+This file defines the working harness for this repository so future AI coding sessions stay recoverable and scoped.
 
 Project target:
 
-`Feishu-first incident discussion assistant for R&D teams`
+`A controlled workflow agent for R&D teams, starting from Feishu incident analysis and expanding into auditable growth and AI-assisted code review.`
 
-P0 core chain:
+Current implementation baseline:
 
-`manual Feishu trigger -> current-thread context -> source citation lookup -> structured summary -> reply in the same thread`
+`manual Feishu trigger -> thread context -> evidence lookup -> structured incident summary -> reply`
 
-This project is a focused AI product for one discussion workflow, not a multi-agent platform.
+Planned platform direction:
+
+`shared memory + retrieval + approval + audit + skills -> incident workflow + AI code review workflow`
+
+This project is still not a generic multi-agent playground.
 
 ## 2. Canonical Sources
 
@@ -20,49 +24,49 @@ Every new session must treat itself as stateless and rebuild context from files,
 
 Start by running `.\init.ps1`.
 
-Then read in this order before doing any implementation:
+Then read in this order before doing implementation:
 
 1. `rd-incident-ai-assistant-prd.md`
-2. `tech-spec.md`
-3. `schema.md`
-4. `api-contracts.md`
-5. `prompts.md`
-6. `feature-list.md`
-7. `test-cases.md`
-8. `evolution-policy.md`
-9. `session-playbook.md`
-10. `decision-log.md`
-11. `task-board.json`
-12. `progress.md`
+2. `evolving-agent-architecture.md`
+3. `tech-spec.md`
+4. `schema.md`
+5. `api-contracts.md`
+6. `prompts.md`
+7. `feature-list.md`
+8. `test-cases.md`
+9. `evolution-policy.md`
+10. `session-playbook.md`
+11. `decision-log.md`
+12. `task-board.json`
+13. `progress.md`
 
-If any of these files conflict, resolve them in this order of authority:
+If files conflict, resolve them in this order of authority:
 
 1. `rd-incident-ai-assistant-prd.md`
-2. `tech-spec.md`
-3. `schema.md`
-4. `api-contracts.md`
-5. `prompts.md`
-6. `feature-list.md`
-7. `test-cases.md`
-8. `evolution-policy.md`
-9. `session-playbook.md`
-10. `decision-log.md`
-11. `task-board.json`
-12. `progress.md`
-13. Temporary conversation context
+2. `evolving-agent-architecture.md`
+3. `tech-spec.md`
+4. `schema.md`
+5. `api-contracts.md`
+6. `prompts.md`
+7. `feature-list.md`
+8. `test-cases.md`
+9. `evolution-policy.md`
+10. `session-playbook.md`
+11. `decision-log.md`
+12. `task-board.json`
+13. `progress.md`
+14. temporary conversation context
 
-PRD defines what to build.
-Tech spec defines how P0 is organized.
-Schema defines data contracts.
-API contracts define external integration boundaries.
-Prompts define model behavior boundaries.
-Feature list defines the implementation surface.
-Test cases define acceptance targets.
-Evolution policy defines how project knowledge can be promoted without drift.
-Session playbook defines when to open a new thread and how to start it safely.
-Decision log defines which project choices are already closed and when they may be reopened.
-Task board defines planned work status and dependencies.
-Progress log defines what each session actually did and what the next session should know.
+Interpretation:
+
+- PRD defines product direction
+- architecture doc defines the planned controlled-growth platform
+- tech spec defines the current implementation shape
+- schema defines explicit contracts
+- API contracts define external boundaries
+- prompts define model behavior boundaries
+- feature list defines the product inventory and milestone plan
+- test cases define executable acceptance for implemented features
 
 ## 2.1 Planning vs Handoff
 
@@ -84,172 +88,123 @@ Use `progress.md` for:
 - blockers discovered during real work
 - next recommended step
 
-Do not use `progress.md` as a substitute for task status tracking.
-Do not use `task-board.json` as a substitute for session handoff notes.
-
 ## 3. Non-Negotiable Boundaries
 
 Must preserve:
 
-- Single main scenario: manual analysis of one Feishu discussion thread
-- Single P0 chain: trigger -> analyze -> cite -> summarize -> reply
-- Product behavior: cite sources when possible, admit missing information when not
-- Scope control: one-shot thread analysis first, richer follow-up later
+- explicit user-triggered workflows
+- evidence-backed outputs
+- approval before high-risk external actions
+- auditability for learning and reuse
+- canonical docs as the source of truth
 
-Must not expand P0 into:
+Must not drift into:
 
-- automatic incident detection
-- Jira or external task sync
+- automatic incident detection by default
 - generic chatbot behavior
-- multi-agent platform work
-- meeting assistant or speech transcription work
-- self-built model, vector store, or agent framework work
-- heavy frontend work
-
-If a requested change pushes the project outside these boundaries, stop and explicitly call out the scope break.
+- autonomous code rewriting as a growth mechanism
+- silent schema or prompt-boundary mutation
+- unapproved external task or review publication
+- multi-agent complexity without a concrete workflow need
 
 ## 4. Session Workflow
 
-Each implementation session must follow this order.
+Each session must follow this order.
 
 ### Step 1: Initialize
 
-- Run `.\init.ps1`
-- Confirm required governance and spec files exist
-- Confirm the current next task from `task-board.json`
-- Read the latest handoff in `progress.md`
-- Confirm the thread boundary rules from `session-playbook.md`
+- run `.\init.ps1`
+- confirm required docs exist
+- confirm the next task from `task-board.json`
+- read the latest handoff in `progress.md`
+- read the current growth and approval boundaries before implementation
 
-### Step 2: Pick One Task
+### Step 2: Pick One Primary Task
 
-Only pick one primary task at a time unless the second task is a tiny follow-up inside the same module.
+Work on one primary task at a time unless the second change is a tiny same-task follow-up.
 
-Allowed:
+Allowed task types:
 
-- One scaffold task
-- One Feishu integration task
-- One knowledge task
-- One reply rendering task
-
-Not allowed:
-
-- Scaffold + callback handling + reply rendering in one unbounded session
-- P0 work mixed with P1 follow-up, todo draft, or external sync
-- Reopening product scope while implementing a module
+- incident workflow task
+- growth-kernel task
+- AI code review task
+- doc alignment task
 
 ### Step 3: Implement Narrowly
 
 During implementation:
 
-- Work only inside the chosen task boundary
-- Reuse current PRD decisions instead of reopening them
-- Prefer the minimum code path that keeps P0 explainable
-- Keep interfaces explicit and testable
-- Keep user-visible behavior aligned with the product language in the PRD
+- work only inside the chosen task boundary
+- prefer explicit contracts over hidden behavior
+- keep high-risk actions proposal-first
+- keep growth features candidate-first
+- preserve tenant isolation and auditability
 
 ### Step 4: Evaluate Independently
 
-Do not declare success from code inspection alone.
+Do not declare success from inspection alone.
 
 Before marking a task complete, collect evidence:
 
-- What changed
-- Which acceptance checks ran
-- What passed
-- What remains risky
-
-If no executable verification is available yet, record the exact reason and leave the task `in_progress` or `blocked`, not `done`.
+- what changed
+- which acceptance checks ran
+- what passed
+- what remains risky
 
 ### Step 5: Handoff
 
 At session end:
 
-- Update `task-board.json`
-- Append a new session record in `progress.md`
-- Record next recommended task
-- Record blockers and assumptions
-
-No session is complete until the handoff is written down.
+- update `task-board.json`
+- append a new session record in `progress.md`
+- record the next recommended task
+- record blockers and assumptions
 
 ## 4.1 Controlled Growth
 
-The agent is allowed to accumulate verified working patterns, but it must do so in the order defined by `evolution-policy.md`.
+The growth system must obey:
+
+`session evidence -> skill candidate -> approved reuse`
 
 Default rule:
 
-- session evidence may be recorded automatically
-- reusable patterns may be proposed as candidates
-- high-authority docs and stable skills must not be silently rewritten from one session's intuition
+- evidence may be recorded automatically
+- candidate skills may be proposed automatically
+- active skills, canonical-doc changes, and behavior changes must not be silently promoted
 
-When a repeated ambiguity appears, check `decision-log.md` before reopening the question.
+## 5. Completion Gate
 
-## 5. Task Status Rules
+A task is `done` only when all are true:
 
-Use only these statuses in `task-board.json`:
+1. the deliverable exists
+2. the relevant acceptance checks were executed or concretely simulated with evidence
+3. regression risk against existing workflows was considered
+4. `progress.md` contains a factual handoff
 
-- `not_started`: no implementation work has begun
-- `in_progress`: code or docs are actively being changed
-- `blocked`: cannot continue due to a real dependency or missing decision
-- `done`: acceptance checks passed and evidence is recorded in `progress.md`
+## 6. Human Escalation Gates
 
-Do not mark `done` based on:
+Ask the human only when one of these happens:
 
-- partial code skeleton
-- TODO comments
-- "core logic is basically there"
-- model self-confidence
+- the feature list itself needs a product-level tradeoff decision
+- a change would materially alter scope or product promises
+- a new external dependency changes complexity enough to alter roadmap assumptions
+- a broken intermediate state cannot be recovered safely from the local workspace
 
-## 6. Completion Gate
+Do not ask for implementation details that can be decided from project files.
 
-A task can be marked `done` only when all of the following are true:
+## 7. Current Defaults
 
-1. The deliverable exists.
-2. The acceptance checks for that task have been executed or concretely simulated with evidence.
-3. Regressions against the current P0 chain were considered.
-4. `progress.md` contains a short factual handoff.
+Unless a later canonical file changes them, use these defaults:
 
-If any one of the four is missing, the task is not done.
+- stack: Python 3.11 + FastAPI + Pydantic
+- incident entry: Feishu manual trigger
+- current evidence source: local controlled knowledge documents
+- current output style: structured, source-aware, compact
+- high-risk actions: approval required
+- growth outputs: proposal-first and audit-backed
 
-## 7. Recovery And Rollback Discipline
+## 8. First Principle
 
-When work goes wrong, do not keep piling changes onto a broken state.
+This repository should evolve by accumulating approved reusable patterns.
 
-Recovery order:
-
-1. Stop adding scope.
-2. Identify the last known-good task from `progress.md`.
-3. Isolate whether the break is in callback parsing, thread loading, knowledge lookup, summary generation, or reply delivery.
-4. Revert only the smallest local change set required.
-5. Re-run the relevant acceptance checks.
-6. Write down the failure mode in `progress.md`.
-
-If a session leaves the workspace in an unverified state, the handoff must say so explicitly.
-
-## 8. Human Escalation Gates
-
-Ask the human before proceeding if any of these happens:
-
-- The implementation would change the product scope in the PRD
-- A new external dependency materially changes complexity
-- The next task depends on an unresolved product decision
-- A broken intermediate state cannot be safely recovered from local context
-
-Do not ask the human for choices that can be resolved from existing project files.
-
-## 9. Current Project Defaults
-
-Unless later files explicitly change them, use these defaults:
-
-- Implementation draft stack: Python 3.11 + FastAPI + Pydantic
-- Entry: Feishu event callback with manual command trigger
-- Knowledge source: local Markdown or text documents
-- Output: structured summary plus source citations in the same Feishu thread
-- No mandatory database in P0
-- No Jira integration in P0
-
-## 10. First Principle
-
-This harness exists to make long-running AI implementation recoverable.
-
-The agent is not judged by how much code it writes in one sitting.
-The agent is judged by whether another fresh session can safely continue from the files it leaves behind.
+It must not evolve by silently rewriting its own truth or expanding scope from one optimistic session.

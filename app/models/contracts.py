@@ -50,6 +50,11 @@ class PostmortemStatus(str, Enum):
     DRAFT = "draft"
 
 
+class FollowUpSource(str, Enum):
+    MEMORY = "memory"
+    HEURISTIC = "heuristic"
+
+
 NonEmptyText: TypeAlias = str
 
 
@@ -67,6 +72,7 @@ class FollowUpContext(BaseModel):
 
     previous_summary: NonEmptyText | None = None
     new_messages: list[ThreadMessage] = Field(default_factory=list)
+    source: FollowUpSource | None = None
 
 
 class AnalysisRequest(BaseModel):
@@ -80,6 +86,37 @@ class AnalysisRequest(BaseModel):
     user_display_name: str | None = None
     thread_messages: list[ThreadMessage] = Field(min_length=1)
     follow_up_context: FollowUpContext | None = None
+
+
+class MemoryScope(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    tenant_id: NonEmptyText = Field(min_length=1)
+    user_id: NonEmptyText = Field(min_length=1)
+    thread_id: NonEmptyText = Field(min_length=1)
+
+
+class ThreadMemoryState(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    schema_version: int = Field(default=1, ge=1)
+    last_summary_text: str | None = None
+    last_summary_message_id: str | None = None
+    last_processed_message_id: str | None = None
+    last_processed_at: datetime | None = None
+    last_trigger_command: TriggerCommand | None = None
+    last_summary_status: AnalysisResultStatus | None = None
+    updated_at: datetime
+    known_facts: list[NonEmptyText] = Field(default_factory=list)
+    open_questions: list[NonEmptyText] = Field(default_factory=list)
+
+
+class MemorySnapshot(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    user_memory: dict[str, object] = Field(default_factory=dict)
+    org_memory: dict[str, object] = Field(default_factory=dict)
+    thread_memory: ThreadMemoryState | None = None
 
 
 class KnowledgeCitation(BaseModel):
