@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `EVL-001` complete
-- Overall status: the codebase now has a working file-backed thread memory foundation on top of the incident-analysis baseline, plus aligned roadmap docs for the shared growth kernel and planned AI code review workflow
-- Recommended next task: `RET-001 Upgrade retrieval into planner-router-ranker pipeline`
-- Last known good state: runnable incident-analysis scaffold with explicit thread memory, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and full passing regression coverage
+- Phase: `RET-001` complete
+- Overall status: the codebase now has deterministic planner-router-ranker retrieval on top of the thread-memory incident baseline, with weak-evidence filtering and bounded second-pass recall wired through the existing live Feishu flow
+- Recommended next task: `ACT-001 Add action proposal queue and approval-backed incident actions`
+- Last known good state: runnable incident-analysis scaffold with explicit thread memory, deterministic evidence routing, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and `65` passing regression tests
 
 ## Canonical Files
 
@@ -31,7 +31,7 @@
 - P0 implementation draft stack is `Python 3.11 + FastAPI + Pydantic`
 - the current implemented workflow remains explicit manual trigger in Feishu
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
-- the current evidence layer still starts from local controlled knowledge documents
+- the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated
 
 ## Open Decisions
@@ -130,6 +130,44 @@ Required fields:
   - Approval-backed pending-action persistence is not implemented yet
 - Next recommended task:
   - `RET-001 Upgrade retrieval into planner-router-ranker pipeline`
+
+### Session 023
+
+- Date: 2026-04-11
+- Primary task: `RET-001`
+- Objective: replace the old keyword-hit retrieval path with a deterministic planner-router-ranker pipeline while preserving the existing knowledge-base and live-flow interfaces
+- Files changed:
+  - `README.md`
+  - `app/services/knowledge_base.py`
+  - `app/services/retrieval/__init__.py`
+  - `app/services/retrieval/models.py`
+  - `app/services/retrieval/planner.py`
+  - `app/services/retrieval/ranker.py`
+  - `app/services/retrieval/router.py`
+  - `app/services/retrieval/service.py`
+  - `app/services/retrieval/utils.py`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_analysis_service.py`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_knowledge_base.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_knowledge_base.py tests/test_feishu_live_flow.py tests/test_analysis_service.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `RET-001` complete
+  - Retrieval now uses a deterministic planner, document router, and evidence ranker behind the existing `KnowledgeBase` facade
+  - Release-related threads prefer release-note evidence, auth issues prefer runbooks, and weak hits no longer bypass insufficient-context behavior
+  - A single bounded second pass can recover route-specific evidence without introducing external retrieval infrastructure
+- Blockers:
+  - Incident actions are still draft-only outputs and are not yet persisted into an approval queue
+  - User/org memory, audit recording, and growth-kernel promotion flows remain unimplemented
+- Next recommended task:
+  - `ACT-001 Add action proposal queue and approval-backed incident actions`
 
 ### Session 001
 

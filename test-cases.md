@@ -43,6 +43,8 @@ Recommended fixture types:
 | T-011 | End-to-end fixture flow | Automated | Yes |
 | T-012 | Unsupported chatter no-op | Automated | Yes |
 | T-013 | Explicit thread memory continuity | Automated | Post-P0 |
+| T-014 | Release evidence route preference | Automated | Post-P0 |
+| T-015 | Weak evidence filtering | Automated | Post-P0 |
 
 ## 4. Detailed Test Cases
 
@@ -269,6 +271,40 @@ Expected result:
 - The service restores the previous summary from thread memory
 - Only messages after the previous processed cursor are treated as new
 - When memory is absent, the old heuristic path still degrades safely
+
+### T-014 Release Evidence Route Preference
+
+Goal:
+
+- Confirm release-related incident threads prefer release notes over generic documents when both are available.
+
+Input:
+
+- Thread discussing a deploy, rollback, or release regression
+- Knowledge source containing both release notes and general SOP documents
+
+Expected result:
+
+- Retrieval returns release-note evidence ahead of generic documents
+- The top citation in the rendered incident reply comes from the release route
+- The behavior stays deterministic across repeated runs
+
+### T-015 Weak Evidence Filtering
+
+Goal:
+
+- Confirm low-signal keyword overlap does not bypass insufficient-context safeguards.
+
+Input:
+
+- Ambiguous thread with only broad shared terms
+- Knowledge source containing weakly related documents but no strong route match
+
+Expected result:
+
+- Retrieval returns no strong citation candidates, or only citations above the configured threshold
+- The analysis layer still emits `insufficient_context` when no reliable evidence remains
+- The system does not convert a weak hit into a confident diagnosis
 
 ## 5. Manual Verification Checklist
 

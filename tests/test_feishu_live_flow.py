@@ -117,7 +117,7 @@ async def test_feishu_live_flow_runs_analysis_and_replies(tmp_path: Path) -> Non
     assert llm_client.calls
     assert len(feishu_client.reply_calls) == 1
     assert feishu_client.reply_calls[0][0:3] == ("oc_xxx", "omt_xxx", "om_xxx")
-    assert "Payment Service SOP" in feishu_client.reply_calls[0][3]
+    assert "Payment Release 2026-04-10" in feishu_client.reply_calls[0][3]
     saved_state = memory_service.load_thread_state(memory_service.resolve_scope(build_trigger_event()))
     assert saved_state is not None
     assert saved_state.last_summary_message_id == "om_reply_live"

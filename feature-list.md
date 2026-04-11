@@ -43,7 +43,7 @@ These capabilities already exist and remain the base layer.
 | --- | --- | --- | --- |
 | FD-001 | Feishu manual trigger | Implemented | Start analysis from an explicit user command |
 | FD-002 | Thread loading and normalization | Implemented | Build a stable request from discussion context |
-| FD-003 | Local knowledge retrieval | Implemented | Return source-aware evidence from controlled docs |
+| FD-003 | Deterministic local evidence retrieval | Implemented | Return source-aware evidence from controlled docs through planner, router, ranker, and bounded second-pass recall |
 | FD-004 | Structured incident summary | Implemented | Produce current assessment, facts, impact, actions, and citations |
 | FD-005 | Follow-up summary output | Implemented | Support rerun and summarize-thread flows |
 | FD-006 | Todo draft generation | Implemented | Generate task suggestions from discussion state |
@@ -52,18 +52,18 @@ These capabilities already exist and remain the base layer.
 
 ## 5. Incident Workflow Features
 
-These are the next incident-domain upgrades.
+These are the incident-domain upgrades around the implemented baseline. The first continuity and retrieval milestones are already in place; the action loop and recorder work remain queued.
 
-| ID | Feature | Priority | Summary |
-| --- | --- | --- | --- |
-| INC-001 | Explicit thread memory | High | Replace marker-based follow-up inference with persisted thread state |
-| INC-002 | User and org memory | Medium | Store stable output preferences and team conventions |
-| INC-003 | Retrieval planning and routing | High | Upgrade keyword retrieval into planner, router, and evidence ranking |
-| INC-004 | Evidence quality threshold | High | Prevent weak citations from being treated as sufficient proof |
-| INC-005 | Action proposal queue | High | Persist task and postmortem proposals before confirmation |
-| INC-006 | Approval-backed action execution | High | Confirm, execute, and write back external task results |
-| INC-007 | Incident interaction recorder | Medium | Record trigger, output, correction, approval, and adoption signals |
-| INC-008 | Team-style postmortem output | Medium | Let approved team conventions shape draft structure |
+| ID | Feature | Status | Priority | Summary |
+| --- | --- | --- | --- | --- |
+| INC-001 | Explicit thread memory | Implemented | High | Replace marker-based follow-up inference with persisted thread state |
+| INC-002 | User and org memory | Planned | Medium | Store stable output preferences and team conventions |
+| INC-003 | Retrieval planning and routing | Implemented | High | Upgrade keyword retrieval into planner, router, and evidence ranking |
+| INC-004 | Evidence quality threshold | Implemented | High | Prevent weak citations from being treated as sufficient proof |
+| INC-005 | Action proposal queue | Planned | High | Persist task and postmortem proposals before confirmation |
+| INC-006 | Approval-backed action execution | Planned | High | Confirm, execute, and write back external task results |
+| INC-007 | Incident interaction recorder | Planned | Medium | Record trigger, output, correction, approval, and adoption signals |
+| INC-008 | Team-style postmortem output | Planned | Medium | Let approved team conventions shape draft structure |
 
 ### INC-001 Explicit Thread Memory
 

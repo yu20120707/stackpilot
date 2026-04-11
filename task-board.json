@@ -421,7 +421,7 @@
       "id": "RET-001",
       "title": "Upgrade retrieval into planner-router-ranker pipeline",
       "milestone": "M2",
-      "status": "not_started",
+      "status": "done",
       "priority": 16,
       "depends_on": [
         "EVL-001"
@@ -437,7 +437,7 @@
         "Weak evidence no longer bypasses insufficient-context safeguards.",
         "Retrieval remains deterministic and locally testable."
       ],
-      "notes": "This milestone implements a lightweight Agentic RAG path without introducing external vector infrastructure."
+      "notes": "Completed with a deterministic retrieval package under app/services/retrieval, a stable knowledge-base facade, weak-evidence filtering, bounded second-pass recall, and regression coverage for route preference and insufficient-context safety."
     },
     {
       "id": "ACT-001",

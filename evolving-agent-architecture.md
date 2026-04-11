@@ -201,10 +201,10 @@ The platform must not automatically:
 
 Expected new services over time:
 
-- `app/services/memory_service.py`
-- `app/services/retrieval_planner.py`
-- `app/services/retrieval_router.py`
-- `app/services/evidence_ranker.py`
+- `app/services/kernel/memory_service.py`
+- `app/services/retrieval/planner.py`
+- `app/services/retrieval/router.py`
+- `app/services/retrieval/ranker.py`
 - `app/services/interaction_recorder.py`
 - `app/services/skill_miner.py`
 - `app/services/skill_registry.py`

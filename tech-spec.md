@@ -15,6 +15,7 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - postmortem draft generation
 - confirmation-gated task-sync contract
 - explicit local thread memory for workflow continuity
+- deterministic retrieval planning, routing, and evidence ranking
 
 Still out of scope for the current foundation:
 
@@ -67,6 +68,11 @@ app/
     reply_renderer.py
     kernel/
       memory_service.py
+    retrieval/
+      planner.py
+      router.py
+      ranker.py
+      service.py
 tests/
   fixtures/
   test_health.py
@@ -84,6 +90,8 @@ Module ownership:
 - `core/`: config and logging primitives
 - `models/`: internal contracts defined by `schema.md`
 - `services/`: business orchestration and transformations
+- `services/kernel/`: shared workflow memory and future growth-kernel primitives
+- `services/retrieval/`: deterministic evidence planning, routing, and ranking
 - `prompts/`: prompt templates only
 
 ## 4. Environment Variables
@@ -191,14 +199,14 @@ P0 knowledge source is local and controlled.
 Requirements:
 
 - read local Markdown or text documents only
-- support a simple matching strategy good enough for P0
+- support deterministic planning, routing, ranking, and bounded second-pass retrieval
 - return a bounded set of citation candidates
 - preserve source labels so the reply can cite them
+- filter weak evidence so low-signal hits do not bypass insufficient-context safeguards
 
 P0 does not require:
 
 - vector search
-- reranking
 - document sync pipelines
 - database-backed metadata
 
@@ -270,7 +278,7 @@ This foundation spec still does not define:
 
 - automatic incident detection
 - unapproved task execution
-- advanced retrieval
+- external vector-backed retrieval infrastructure
 - AI code review publish flow
 
 Those belong to later milestones and should not be pulled into the implemented foundation by default.
