@@ -7,7 +7,7 @@ This document defines the product-level feature inventory for the next version o
 Current codebase reality:
 
 - the implemented foundation is still `Feishu incident analysis`
-- the implemented expansion now includes `controlled growth + action loop + AI code review + org convention shaping`
+- the implemented expansion now includes `controlled growth + action loop + AI code review + org convention shaping + canonical convention gateway`
 
 This file therefore serves two purposes:
 
@@ -110,7 +110,8 @@ These features are shared by incident and code-review workflows.
 | GR-005 | Skill candidate registry | Implemented | Medium | Store draft reusable workflow patterns |
 | GR-006 | Skill approval lifecycle | Implemented | Medium | Promote skills through draft, approved, active, retired states |
 | GR-007 | Evaluation and feedback loop | Planned | Medium | Score which behaviors helped, failed, or were corrected |
-| GR-008 | Canonical knowledge gateway | Planned | High | Keep product truth anchored to approved docs, not chat memory |
+| GR-008 | Canonical knowledge gateway | Implemented | High | Keep product truth anchored to approved docs, not chat memory |
+| GR-009 | Convention promotion flow | Planned | High | Promote approved patterns into canonical docs through explicit approval |
 
 ### GR-001 Evidence Ledger
 
@@ -207,6 +208,7 @@ User-visible outcome:
 | M6 | Grow review reuse safely | CR-006, CR-008, CR-009, CR-010 |
 | M7 | Apply org conventions across workflows | INC-002, INC-007, INC-008, GR-002 |
 | M8 | Anchor canonical team knowledge | GR-008 |
+| M9 | Promote approved conventions safely | GR-007, GR-009 |
 
 ## 9. Explicit Non-Goals
 

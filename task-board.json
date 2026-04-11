@@ -553,7 +553,7 @@
       "id": "GRW-002",
       "title": "Add canonical knowledge gateway for approved org conventions and review policy",
       "milestone": "M8",
-      "status": "not_started",
+      "status": "done",
       "priority": 22,
       "depends_on": [
         "MEM-002"
@@ -569,7 +569,29 @@
         "Canonical conventions take precedence over ad-hoc org memory while explicit user commands still win at runtime.",
         "The gateway remains tenant-scoped, auditable, and does not let chat transcripts silently rewrite canonical policy."
       ],
-      "notes": "This next milestone should anchor reusable team conventions to approved knowledge artifacts so org memory remains helpful without becoming the only source of truth."
+      "notes": "Completed with a tenant-scoped canonical convention service under the knowledge layer, runtime precedence of canonical docs over mutable org memory, shared KnowledgeBase integration for canonical policy docs, and postmortem style snapshots that keep approval-time write-back stable."
+    },
+    {
+      "id": "GRW-003",
+      "title": "Add approval-backed convention promotion into the canonical gateway",
+      "milestone": "M9",
+      "status": "not_started",
+      "priority": 23,
+      "depends_on": [
+        "GRW-002"
+      ],
+      "deliverables": [
+        "Canonical convention promotion contract",
+        "Approval-backed promotion command flow",
+        "Versioned canonical doc writer",
+        "Promotion and rollback regression tests"
+      ],
+      "acceptance_checks": [
+        "Approved conventions can be promoted into tenant-scoped canonical docs only through explicit approval.",
+        "Canonical promotion writes versioned artifacts and audit entries instead of silently mutating runtime memory.",
+        "New runtime requests can use promoted canonical docs while previously created pending actions remain stable through snapshots."
+      ],
+      "notes": "This next milestone should connect the growth kernel to the canonical gateway so approved patterns no longer require manual file authoring."
     }
   ]
 }

@@ -109,6 +109,17 @@ class ReviewFeedbackStatus(str, Enum):
     IGNORED = "ignored"
 
 
+class CanonicalConventionStatus(str, Enum):
+    APPROVED = "approved"
+    DRAFT = "draft"
+
+
+class CanonicalPolicyScope(str, Enum):
+    INCIDENT = "incident"
+    REVIEW = "review"
+    SHARED = "shared"
+
+
 class ReviewEvidenceType(str, Enum):
     DIFF_HUNK = "diff_hunk"
     POLICY_DOC = "policy_doc"
@@ -280,6 +291,29 @@ class OrgPostmortemStyle(BaseModel):
     title_prefix: str | None = None
     follow_up_prefix: str | None = None
     section_labels: dict[str, NonEmptyText] = Field(default_factory=dict)
+
+
+class CanonicalPolicyDocument(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    doc_id: NonEmptyText = Field(min_length=1)
+    title: NonEmptyText = Field(min_length=1)
+    content: NonEmptyText = Field(min_length=1)
+    scope: CanonicalPolicyScope = CanonicalPolicyScope.SHARED
+    source_uri: str | None = None
+    tags: list[NonEmptyText] = Field(default_factory=list)
+
+
+class CanonicalConventionDocument(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    schema_version: int = Field(default=1, ge=1)
+    convention_id: NonEmptyText = Field(min_length=1)
+    title: NonEmptyText = Field(min_length=1)
+    status: CanonicalConventionStatus = CanonicalConventionStatus.APPROVED
+    review_defaults: OrgReviewDefaults | None = None
+    postmortem_style: OrgPostmortemStyle | None = None
+    policy_documents: list[CanonicalPolicyDocument] = Field(default_factory=list)
 
 
 class AnalysisRequest(BaseModel):
@@ -467,6 +501,7 @@ class PendingIncidentAction(BaseModel):
     execution_message: str | None = None
     task_sync_request: ExternalTaskSyncRequest | None = None
     postmortem_draft: PostmortemDraft | None = None
+    postmortem_style_snapshot: OrgPostmortemStyle | None = None
     review_publish_request: ReviewPublishRequest | None = None
     review_draft: CodeReviewDraft | None = None
 

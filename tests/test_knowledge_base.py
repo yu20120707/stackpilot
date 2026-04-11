@@ -1,7 +1,15 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
 
-from app.models.contracts import AnalysisRequest, ThreadMessage, TriggerCommand
+from app.models.contracts import (
+    AnalysisRequest,
+    CanonicalPolicyScope,
+    ThreadMessage,
+    TriggerCommand,
+)
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.knowledge_base import KnowledgeBase
 
 
@@ -169,3 +177,51 @@ def test_knowledge_base_filters_weak_evidence_hits(tmp_path: Path) -> None:
     citations = knowledge_base.retrieve_citations(request)
 
     assert citations == []
+
+
+def test_knowledge_base_includes_tenant_canonical_policy_documents_in_scoped_metadata(
+    tmp_path: Path,
+) -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_dir = tmp_path / "knowledge"
+    shutil.copytree(fixtures_dir, knowledge_dir)
+    tenant_dir = knowledge_dir / "canonical" / "oc_xxx"
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    (tenant_dir / "team-defaults.canonical.json").write_text(
+        json.dumps(
+            {
+                "convention_id": "team-defaults",
+                "title": "Team Defaults",
+                "status": "approved",
+                "policy_documents": [
+                    {
+                        "doc_id": "incident-approved-policy",
+                        "title": "Approved Incident Policy",
+                        "content": "Use the approved tenant incident policy before generic docs.",
+                        "scope": "incident",
+                        "tags": ["policy", "incident"],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    knowledge_base = KnowledgeBase(
+        knowledge_dir,
+        canonical_convention_service=CanonicalConventionService(knowledge_dir),
+    )
+
+    tenant_metadata = knowledge_base.list_metadata(
+        tenant_id="oc_xxx",
+        use_case=CanonicalPolicyScope.INCIDENT,
+    )
+    other_tenant_metadata = knowledge_base.list_metadata(
+        tenant_id="oc_other",
+        use_case=CanonicalPolicyScope.INCIDENT,
+    )
+
+    assert any(item.doc_id == "incident-approved-policy" for item in tenant_metadata)
+    assert not any(item.doc_id == "incident-approved-policy" for item in other_tenant_metadata)

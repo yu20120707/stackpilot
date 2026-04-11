@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from app.models.contracts import CodeReviewRequest, KnowledgeCitation, ReviewFocusArea, SourceType
+from app.models.contracts import (
+    CanonicalPolicyScope,
+    CodeReviewRequest,
+    KnowledgeCitation,
+    ReviewFocusArea,
+    SourceType,
+)
 from app.services.knowledge_base import KnowledgeBase
 
 
@@ -26,7 +32,10 @@ class ReviewPolicyService:
             if segment
         }
 
-        for document in self.knowledge_base.load_documents():
+        for document in self.knowledge_base.load_documents_for_tenant(
+            request.chat_id,
+            use_case=CanonicalPolicyScope.REVIEW,
+        ):
             haystack = " ".join(
                 [
                     document.metadata.title.lower(),

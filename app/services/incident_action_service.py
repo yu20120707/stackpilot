@@ -59,6 +59,7 @@ class IncidentActionService:
     ) -> list[PendingIncidentAction]:
         now = datetime.now(timezone.utc)
         action_ids = self._allocate_action_ids(scope, count=2)
+        postmortem_style = self._load_postmortem_style(scope)
 
         task_sync_request = self.task_sync_service.build_sync_request_from_summary(
             summary,
@@ -82,7 +83,7 @@ class IncidentActionService:
         postmortem_draft = await self.postmortem_service.generate_draft(
             request=request,
             summary=summary,
-            org_style=self._load_postmortem_style(scope),
+            org_style=postmortem_style,
         )
         postmortem_action = PendingIncidentAction(
             action_id=action_ids[1],
@@ -95,6 +96,7 @@ class IncidentActionService:
             created_at=now,
             updated_at=now,
             postmortem_draft=postmortem_draft,
+            postmortem_style_snapshot=postmortem_style,
         )
         return [task_action, postmortem_action]
 
@@ -181,7 +183,7 @@ class IncidentActionService:
 
         rendered_draft = self.postmortem_renderer.render(
             action.postmortem_draft,
-            org_style=self._load_postmortem_style(scope),
+            org_style=action.postmortem_style_snapshot or self._load_postmortem_style(scope),
         )
         return action, f"动作执行结果：\n已回写复盘草稿 {action.action_id}。\n\n{rendered_draft}"
 

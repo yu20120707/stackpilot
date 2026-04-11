@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `MEM-002` complete
-- Overall status: the codebase now has tenant-scoped org convention shaping across incident and review workflows, including org-level review default focus and team-style postmortem draft/render shaping on top of the shared growth kernel
-- Recommended next task: `GRW-002 Add canonical knowledge gateway for approved org conventions and review policy`
-- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, org convention shaping, draft skill candidates, workflow-router dispatching, and `104` passing regression tests
+- Phase: `GRW-002` complete
+- Overall status: the codebase now has a tenant-scoped canonical convention gateway under the knowledge layer, so approved policy/style docs can shape incident retrieval, review policy lookup, and org convention resolution without making mutable org memory the highest-authority source
+- Recommended next task: `GRW-003 Add approval-backed convention promotion into the canonical gateway`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, org convention shaping, canonical convention docs, workflow-router dispatching, and `108` passing regression tests
 
 ## Canonical Files
 
@@ -33,8 +33,10 @@
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
 - AI code review now supports explicit PR-link or inline diff triggers and keeps external GitHub publication behind approval
 - Review focus can now come from explicit request text or repeated user preference memory, and accepted findings can be recorded explicitly from the same Feishu thread
-- Review focus resolution now follows `explicit request -> user memory -> org defaults -> safe fallback`
+- Review focus resolution now follows `explicit request -> user memory -> approved canonical defaults -> mutable org defaults -> safe fallback`
 - Tenant org memory can now shape postmortem title, follow-up wording, and section labels without overriding explicit user intent
+- Approved canonical convention docs now override mutable org memory for org-level defaults and shared policy retrieval
+- Postmortem actions now snapshot the resolved style at creation time so later approval does not drift when mutable org memory changes
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated through a thread-scoped pending action queue
 - skill candidates remain draft-only by default and do not participate in runtime routing yet
@@ -51,7 +53,7 @@
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
 - GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
-- Canonical truth for org conventions still lives in mutable org memory files; an approved-doc gateway is not implemented yet.
+- Canonical convention docs are runtime-readable now, but there is still no approval-backed promotion flow to create or version them from in-product actions.
 
 ## Handoff Rules
 
@@ -403,6 +405,48 @@ Required fields:
   - Review adoption still depends on explicit in-thread feedback rather than GitHub-side outcome signals
 - Next recommended task:
   - `GRW-002 Add canonical knowledge gateway for approved org conventions and review policy`
+
+### Session 029
+
+- Date: 2026-04-11
+- Primary task: `GRW-002`
+- Objective: anchor approved org conventions under the shared knowledge layer so canonical policy/style docs can override mutable org memory safely across incident and review workflows
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/canonical_convention_service.py`
+  - `app/services/kernel/org_convention_service.py`
+  - `app/services/knowledge_base.py`
+  - `app/services/retrieval/service.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/review/preference_service.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_canonical_convention_service.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_knowledge_base.py`
+  - `tests/test_org_convention_service.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_canonical_convention_service.py tests/test_org_convention_service.py tests/test_knowledge_base.py tests/test_code_review_flow.py tests/test_incident_action_service.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `GRW-002` complete
+  - Approved canonical convention docs now live under `data/knowledge/canonical/<tenant>/*.canonical.json` and can provide runtime review defaults plus scoped policy docs
+  - KnowledgeBase and review policy lookup now share the same tenant-scoped canonical policy source, and canonical docs override mutable org memory while explicit requests and user memory remain higher priority
+  - Incident postmortem actions now store a resolved style snapshot so approval-time write-back stays stable even if mutable org memory changes later
+- Blockers:
+  - Canonical convention docs are still authored manually; no approval-backed promotion path exists yet
+  - GitHub-side adoption signals still do not feed the growth kernel automatically
+- Next recommended task:
+  - `GRW-003 Add approval-backed convention promotion into the canonical gateway`
 
 ### Session 001
 

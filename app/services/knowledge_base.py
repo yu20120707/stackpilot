@@ -5,9 +5,11 @@ import re
 from app.core.logging import get_logger
 from app.models.contracts import (
     AnalysisRequest,
+    CanonicalPolicyScope,
     KnowledgeCitation,
     KnowledgeDocumentMetadata,
 )
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.retrieval.models import LoadedKnowledgeDocument
 from app.services.retrieval.service import RetrievalService
 
@@ -19,9 +21,16 @@ MARKDOWN_HEADING_PATTERN = re.compile(r"^\s*#\s+(.+?)\s*$", re.MULTILINE)
 
 
 class KnowledgeBase:
-    def __init__(self, knowledge_dir: Path, max_hits: int = 5) -> None:
+    def __init__(
+        self,
+        knowledge_dir: Path,
+        max_hits: int = 5,
+        *,
+        canonical_convention_service: CanonicalConventionService | None = None,
+    ) -> None:
         self.knowledge_dir = knowledge_dir
         self.max_hits = max_hits
+        self.canonical_convention_service = canonical_convention_service
         self.retrieval_service = RetrievalService(
             document_loader=self.load_documents,
             default_max_hits=max_hits,
@@ -63,8 +72,35 @@ class KnowledgeBase:
 
         return documents
 
-    def list_metadata(self) -> list[KnowledgeDocumentMetadata]:
-        return [document.metadata for document in self.load_documents()]
+    def load_documents_for_tenant(
+        self,
+        tenant_id: str | None = None,
+        *,
+        use_case: CanonicalPolicyScope | None = None,
+    ) -> list[LoadedKnowledgeDocument]:
+        documents = self.load_documents()
+        if tenant_id and self.canonical_convention_service is not None:
+            documents.extend(
+                self.canonical_convention_service.load_policy_documents(
+                    tenant_id,
+                    use_case=use_case,
+                )
+            )
+        return documents
+
+    def list_metadata(
+        self,
+        tenant_id: str | None = None,
+        *,
+        use_case: CanonicalPolicyScope | None = None,
+    ) -> list[KnowledgeDocumentMetadata]:
+        return [
+            document.metadata
+            for document in self.load_documents_for_tenant(
+                tenant_id,
+                use_case=use_case,
+            )
+        ]
 
     def retrieve_citations(
         self,
@@ -75,6 +111,10 @@ class KnowledgeBase:
         return self.retrieval_service.retrieve(
             analysis_request,
             max_hits=max_hits,
+            documents=self.load_documents_for_tenant(
+                analysis_request.chat_id,
+                use_case=CanonicalPolicyScope.INCIDENT,
+            ),
         )
 
     def _is_supported_document(self, path: Path) -> bool:

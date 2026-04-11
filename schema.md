@@ -403,6 +403,7 @@ Field rules:
 - `execution_message`: optional execution result marker
 - `task_sync_request`: optional `ExternalTaskSyncRequest`
 - `postmortem_draft`: optional `PostmortemDraft`
+- `postmortem_style_snapshot`: optional resolved style snapshot used to keep later postmortem write-back stable even if mutable org memory changes
 
 ## 10.3 Growth Evidence Models
 
@@ -616,12 +617,62 @@ Runtime precedence rules:
 
 - explicit review focus in the current request wins
 - user preference memory is consulted next
-- org review defaults are consulted after user memory
+- approved canonical review defaults are consulted after user memory
+- mutable org review defaults are consulted after canonical defaults
 - hardcoded safe defaults remain the final fallback
 
 Constraint:
 
 - org memory may shape output and defaults, but it does not silently rewrite canonical team policy documents
+
+## 10.6 Canonical Convention Document Model
+
+Approved canonical convention docs now live under `data/knowledge/canonical/<tenant>/*.canonical.json`.
+
+Example:
+
+```json
+{
+  "schema_version": 1,
+  "convention_id": "team-review",
+  "title": "Team Review Defaults",
+  "status": "approved",
+  "review_defaults": {
+    "default_focus_areas": [
+      "security"
+    ]
+  },
+  "postmortem_style": {
+    "title_prefix": "[SEV-2]"
+  },
+  "policy_documents": [
+    {
+      "doc_id": "review-security-policy",
+      "title": "Approved Security Review Policy",
+      "content": "Always inspect auth, permission, and input-validation changes first.",
+      "scope": "review",
+      "source_uri": "canonical://oc_xxx/team-review/review-security-policy",
+      "tags": [
+        "policy",
+        "review",
+        "security"
+      ]
+    }
+  ]
+}
+```
+
+Field rules:
+
+- `status`: only `approved` docs participate in runtime convention resolution or policy retrieval
+- `review_defaults`: optional structured review focus defaults
+- `postmortem_style`: optional structured postmortem style overlay
+- `policy_documents`: optional tenant-scoped knowledge documents surfaced through the shared knowledge gateway
+- `scope`: one of `incident`, `review`, or `shared`
+
+Constraint:
+
+- canonical convention docs are tenant-scoped and reusable across workflows, but they are still loaded read-only at runtime
 
 ## 11. Null And Empty Rules
 

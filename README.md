@@ -18,6 +18,7 @@ The current implemented baseline already covers:
 - review focus routing with user preference memory
 - org-level review default focus shaping
 - team-style postmortem draft and rendering shaping
+- approved canonical convention gateway for tenant-scoped policy and style docs
 - explicit finding adoption signals and review-focus draft skill candidates
 
 The next product direction is no longer just "summarize one thread". It is:
@@ -31,7 +32,7 @@ The next product direction is no longer just "summarize one thread". It is:
 Think of the repository in two layers:
 
 1. `Implemented foundation`
-   Feishu-first incident discussion analysis plus manual AI code review, both with structured replies, source-aware evidence, approval-backed actions, tenant-scoped org conventions, and a draft-only growth kernel.
+   Feishu-first incident discussion analysis plus manual AI code review, both with structured replies, source-aware evidence, approval-backed actions, tenant-scoped org conventions, approved canonical convention docs, and a draft-only growth kernel.
 2. `Planned platform`
    A controlled workflow agent that supports incident handling and AI code review on top of shared memory, retrieval, approval, and audit capabilities.
 
@@ -77,6 +78,7 @@ The service starts on [http://127.0.0.1:8000](http://127.0.0.1:8000).
 - `app/services/review`: AI code review parsing, normalization, rendering, and publish services
 - `app/services/retrieval`: deterministic retrieval pipeline components
 - `data/knowledge`: local controlled knowledge sources
+- `data/knowledge/canonical`: approved tenant-scoped convention and policy docs
 - `data/actions`: local persisted pending-action queue
 - `data/records`: append-only workflow evidence and audit logs
 - `data/memory`: local persisted workflow memory

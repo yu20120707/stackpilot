@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
+import shutil
 
 import pytest
 
@@ -15,6 +16,7 @@ from app.models.contracts import (
 )
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.kernel.org_convention_service import OrgConventionService
@@ -124,6 +126,7 @@ def build_review_flow(
     github_patch: str | None = None,
     publish_url: str | None = None,
     reply_success: bool = True,
+    knowledge_dir: Path | None = None,
 ) -> tuple[CodeReviewFlow, FakeReviewFeishuClient, FakeGitHubReviewClient, ActionQueueService, InteractionRecorder, MemoryService]:
     feishu_client = FakeReviewFeishuClient(reply_success=reply_success)
     llm_client = FakeLLMClient(llm_response)
@@ -134,15 +137,26 @@ def build_review_flow(
     interaction_recorder, skill_miner = build_growth_services(tmp_path)
     action_queue_service = ActionQueueService(tmp_path / "actions")
     memory_service = MemoryService(tmp_path / "memory")
+    knowledge_root = knowledge_dir or FIXTURES_DIR / "knowledge"
+    canonical_convention_service = CanonicalConventionService(knowledge_root)
     review_renderer = ReviewRenderer()
     review_flow = CodeReviewFlow(
         feishu_client=feishu_client,
         github_review_client=github_client,
         diff_reader=DiffReader(),
-        review_policy_service=ReviewPolicyService(KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3)),
+        review_policy_service=ReviewPolicyService(
+            KnowledgeBase(
+                knowledge_root,
+                max_hits=3,
+                canonical_convention_service=canonical_convention_service,
+            )
+        ),
         review_preference_service=ReviewPreferenceService(
             memory_service,
-            org_convention_service=OrgConventionService(memory_service),
+            org_convention_service=OrgConventionService(
+                memory_service,
+                canonical_convention_service=canonical_convention_service,
+            ),
         ),
         review_service=ReviewService(llm_client),
         review_renderer=review_renderer,
@@ -335,6 +349,75 @@ async def test_code_review_flow_reuses_preferred_focus_after_repeated_explicit_r
     )
     assert review_state is not None
     assert [item.value for item in review_state.focus_areas] == ["security"]
+
+
+@pytest.mark.anyio
+async def test_code_review_flow_prefers_canonical_defaults_and_policy_docs_over_org_memory(
+    tmp_path: Path,
+) -> None:
+    knowledge_dir = tmp_path / "knowledge"
+    shutil.copytree(FIXTURES_DIR / "knowledge", knowledge_dir)
+    tenant_dir = knowledge_dir / "canonical" / "oc_xxx"
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    (tenant_dir / "team-review.canonical.json").write_text(
+        json.dumps(
+            {
+                "convention_id": "team-review",
+                "title": "Team Review Defaults",
+                "status": "approved",
+                "review_defaults": {
+                    "default_focus_areas": ["security"],
+                },
+                "policy_documents": [
+                    {
+                        "doc_id": "review-security-policy",
+                        "title": "Approved Security Review Policy",
+                        "content": "Always inspect auth, permission, and input-validation changes first.",
+                        "scope": "review",
+                        "source_uri": "canonical://oc_xxx/team-review/review-security-policy",
+                        "tags": ["policy", "review", "security"],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    review_flow, _, _, _, interaction_recorder, memory_service = build_review_flow(
+        tmp_path=tmp_path,
+        llm_response=load_text("analysis", "code_review_success.json"),
+        knowledge_dir=knowledge_dir,
+    )
+    memory_service.save_org_memory_for_tenant(
+        "oc_xxx",
+        {
+            "review_defaults": {
+                "default_focus_areas": ["bug_risk"],
+            }
+        },
+    )
+
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(
+            update={"message_id": "om_review_canonical_1", "thread_id": "omt_review_canonical"}
+        ),
+    )
+
+    review_state = memory_service.load_review_state(
+        memory_service.resolve_scope(
+            build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(
+                update={"message_id": "om_review_canonical_1", "thread_id": "omt_review_canonical"}
+            )
+        )
+    )
+    assert review_state is not None
+    assert [item.value for item in review_state.focus_areas] == ["security"]
+
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review_canonical")
+    records = interaction_recorder.list_thread_records(scope)
+    assert "canonical://oc_xxx/team-review/review-security-policy" in records[0].payload["policy_refs"]
 
 
 @pytest.mark.anyio

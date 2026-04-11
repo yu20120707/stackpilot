@@ -13,6 +13,7 @@ from app.services.feishu_live_flow import FeishuLiveFlow
 from app.services.incident_action_service import IncidentActionService
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.kernel.org_convention_service import OrgConventionService
@@ -77,7 +78,11 @@ def build_services(settings: Settings) -> AppServices:
         )
     )
     memory_service = MemoryService(settings.resolved_memory_dir)
-    org_convention_service = OrgConventionService(memory_service)
+    canonical_convention_service = CanonicalConventionService(settings.resolved_knowledge_dir)
+    org_convention_service = OrgConventionService(
+        memory_service,
+        canonical_convention_service=canonical_convention_service,
+    )
     action_queue_service = ActionQueueService(settings.resolved_action_dir)
     audit_log_service = AuditLogService(settings.resolved_records_dir)
     interaction_recorder = InteractionRecorder(
@@ -100,6 +105,7 @@ def build_services(settings: Settings) -> AppServices:
     knowledge_base = KnowledgeBase(
         settings.resolved_knowledge_dir,
         max_hits=settings.max_knowledge_hits,
+        canonical_convention_service=canonical_convention_service,
     )
     analysis_service = AnalysisService(llm_client)
     task_sync_service = TaskSyncService()

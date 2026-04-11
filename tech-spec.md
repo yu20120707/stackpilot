@@ -25,6 +25,7 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - explicit review finding feedback recording and review-memory persistence
 - org-level review default focus shaping
 - team-style postmortem draft and rendering shaping
+- approved canonical convention docs under the knowledge layer
 
 Still out of scope for the current foundation:
 
@@ -86,6 +87,7 @@ app/
     kernel/
       action_queue_service.py
       audit_log_service.py
+      canonical_convention_service.py
       interaction_recorder.py
       memory_service.py
       org_convention_service.py
@@ -234,10 +236,10 @@ One incident-analysis request currently moves through the system in this order:
 3. The command parser extracts the user intent
 4. The workflow router dispatches incident-analysis commands to the incident live flow
 5. The thread reader loads the current thread or message context
-6. The knowledge service loads or queries local knowledge documents
+6. The knowledge service loads local knowledge documents and approved tenant-scoped canonical convention docs when available
 7. The analysis service builds the LLM input and requests a structured summary
 8. For summarize-thread success cases, the incident-action service prepares task-sync and postmortem proposals and stores them in the action queue
-9. When tenant org conventions exist, postmortem generation and rendering apply the stored postmortem title, follow-up, and section-label style
+9. When tenant org conventions exist, postmortem generation and rendering apply the resolved effective style, and the pending action stores a snapshot so later write-back does not drift if mutable org memory changes
 10. The reply renderer converts the structured result into user-facing Feishu text
 11. The Feishu client posts the reply back to the same discussion context
 12. The thread memory service persists the latest successful structured summary state
@@ -251,8 +253,8 @@ One AI-code-review request currently moves through the system in this order:
 5. The review input parser extracts either an inline patch or a GitHub PR URL
 6. For GitHub PR input, the GitHub client attempts to fetch the PR diff
 7. The diff reader normalizes changed files and hunks into a stable review request
-8. The review policy service selects any relevant local policy citations
-9. The review preference service resolves focus areas in this order: explicit user request, remembered user preference, tenant org defaults, then safe fallback defaults
+8. The review policy service selects relevant policy citations from general knowledge plus approved tenant-scoped canonical review docs
+9. The review preference service resolves focus areas in this order: explicit user request, remembered user preference, approved canonical defaults, mutable org defaults, then safe fallback defaults
 10. The review service prompts the LLM for a structured draft review
 11. The review renderer returns a Feishu draft reply, and GitHub publish is queued as a pending action when applicable
 12. The review memory service persists the latest review state and finding ids for the thread
@@ -283,10 +285,12 @@ P0 knowledge source is local and controlled.
 Requirements:
 
 - read local Markdown or text documents only
+- read approved tenant-scoped canonical convention docs from `data/knowledge/canonical/<tenant>/*.canonical.json`
 - support deterministic planning, routing, ranking, and bounded second-pass retrieval
 - return a bounded set of citation candidates
 - preserve source labels so the reply can cite them
 - filter weak evidence so low-signal hits do not bypass insufficient-context safeguards
+- never expose another tenant's canonical docs in the current request scope
 
 P0 does not require:
 
@@ -335,6 +339,7 @@ Allowed in P0:
 
 - local action queue files under `data/actions`
 - local knowledge files under `data/knowledge`
+- local approved canonical convention docs under `data/knowledge/canonical`
 - local thread memory files under `data/memory`
 - local tenant org memory files under `data/memory/<tenant>/org.json`
 - local evidence and audit files under `data/records`

@@ -30,12 +30,13 @@ class RetrievalService:
         analysis_request: AnalysisRequest,
         *,
         max_hits: int | None = None,
+        documents: list[LoadedKnowledgeDocument] | None = None,
     ) -> list[KnowledgeCitation]:
         plan = self.planner.plan(analysis_request)
         if not plan.query_terms:
             return []
 
-        routed_documents = self.router.route_documents(self.document_loader())
+        routed_documents = self.router.route_documents(documents or self.document_loader())
         limit = max_hits or self.default_max_hits
         evidence = self.ranker.rank(plan, routed_documents, max_hits=limit)
 

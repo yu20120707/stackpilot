@@ -40,6 +40,7 @@ Usage:
 - store stable preferences
 - remember approved patterns
 - shape org-level review defaults and postmortem structure
+- keep mutable org memory as a fallback rather than the highest-authority source
 
 Constraint:
 
@@ -50,6 +51,7 @@ Runtime precedence for convention-shaped behavior:
 
 - explicit request
 - user preference memory
+- approved canonical convention docs
 - org default memory
 - safe fallback
 
@@ -67,6 +69,7 @@ Usage:
 - incident evidence lookup
 - review policy lookup
 - historical pattern reuse
+- approved canonical convention and policy lookup
 
 Constraint:
 
@@ -161,7 +164,7 @@ Current MVP note:
 - the runtime entry remains Feishu-first
 - a workflow router dispatches explicit review triggers to a dedicated review flow
 - GitHub publication is draft-first and approval-gated
-- review focus can come from explicit request text, stored preference memory, or tenant org defaults
+- review focus can come from explicit request text, stored preference memory, approved canonical defaults, or tenant org defaults
 - accepted findings are recorded explicitly before they can influence draft skill mining
 
 Core user-visible outputs:
@@ -218,6 +221,7 @@ The platform must not automatically:
 Expected new services over time:
 
 - `app/services/kernel/memory_service.py`
+- `app/services/kernel/canonical_convention_service.py`
 - `app/services/kernel/org_convention_service.py`
 - `app/services/kernel/action_queue_service.py`
 - `app/services/kernel/audit_log_service.py`

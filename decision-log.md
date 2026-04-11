@@ -201,9 +201,9 @@ Copy this format for new confirmed decisions.
 ### DEC-011
 
 - Date: 2026-04-11
-- Status: confirmed
+- Status: superseded
 - Decision: runtime convention resolution must follow `explicit request -> user preference memory -> org defaults -> safe fallback`, and org memory may shape draft structure but may not silently replace canonical team policy.
-- Why: direct operator intent must remain stronger than remembered team defaults, while tenant org memory should still be strong enough to shape postmortem structure and default review focus in a predictable way.
+- Why: this was the first safe org-memory shaping rule before approved canonical convention docs entered runtime precedence.
 - Alternatives considered:
   - let org defaults override explicit user requests
   - keep org memory purely passive until a later milestone
@@ -216,4 +216,25 @@ Copy this format for new confirmed decisions.
   - `feature-list.md`
   - `tech-spec.md`
 - Revisit when:
-  - approved canonical convention docs exist and runtime precedence needs to include a doc-backed gateway layer
+  - `DEC-012` is implemented and stable enough to replace the old precedence note everywhere
+
+### DEC-012
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: approved canonical convention docs live under the knowledge layer and override mutable org memory at runtime, while explicit user requests and remembered user preferences still remain higher-priority than canonical defaults for review focus.
+- Why: approved convention docs need to be tenant-scoped, auditable, and reusable by both incident retrieval and review policy lookup without turning mutable org memory into the only source of truth.
+- Alternatives considered:
+  - keep canonical truth in `org.json`
+  - add a knowledge-only gateway without letting approved docs influence runtime defaults
+- Impacted files:
+  - `app/services/kernel/canonical_convention_service.py`
+  - `app/services/kernel/org_convention_service.py`
+  - `app/services/knowledge_base.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/incident_action_service.py`
+  - `app/models/contracts.py`
+  - `feature-list.md`
+  - `tech-spec.md`
+- Revisit when:
+  - there is an approval-backed promotion flow that can create and version canonical convention docs directly from runtime evidence or approved skill candidates

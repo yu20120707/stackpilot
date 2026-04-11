@@ -147,6 +147,7 @@ class ReviewPreferenceService:
             defaults = self.org_convention_service.load_review_defaults(tenant_id)
             if defaults is not None and defaults.default_focus_areas:
                 return defaults.default_focus_areas
+            return []
 
         org_memory = self.memory_service.load_org_memory_for_tenant(tenant_id)
         return self._extract_preferred_focus_areas(org_memory)

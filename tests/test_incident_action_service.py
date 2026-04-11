@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from app.models.contracts import (
 )
 from app.services.incident_action_service import IncidentActionService
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.kernel.memory_service import MemoryService
 from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.postmortem_renderer import PostmortemRenderer
@@ -274,3 +276,80 @@ async def test_incident_action_service_uses_org_postmortem_style(tmp_path: Path)
     assert pending_action.postmortem_draft is not None
     assert pending_action.postmortem_draft.title.startswith("[SEV-2]")
     assert "团队后续动作：" in reply_text
+
+
+@pytest.mark.anyio
+async def test_incident_action_service_snapshots_resolved_postmortem_style_for_writeback(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "postmortem_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    memory_service = MemoryService(tmp_path / "memory")
+    memory_service.save_org_memory_for_tenant(
+        "oc_xxx",
+        {
+            "postmortem_style": {
+                "section_labels": {
+                    "follow_up_actions": "团队后续动作：",
+                },
+            }
+        },
+    )
+    knowledge_dir = tmp_path / "knowledge"
+    tenant_dir = knowledge_dir / "canonical" / "oc_xxx"
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    (tenant_dir / "team-defaults.canonical.json").write_text(
+        json.dumps(
+            {
+                "convention_id": "team-defaults",
+                "title": "Team Defaults",
+                "status": "approved",
+                "postmortem_style": {
+                    "title_prefix": "[SEV-2]",
+                },
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=TaskSyncService(),
+        postmortem_service=PostmortemService(FakeLLMClient(), prompt_path=prompt_path),
+        postmortem_renderer=PostmortemRenderer(),
+        org_convention_service=OrgConventionService(
+            memory_service,
+            canonical_convention_service=CanonicalConventionService(knowledge_dir),
+        ),
+    )
+    actions = await service.prepare_actions(
+        scope=scope,
+        request=build_request(),
+        summary=build_summary(),
+    )
+    service.persist_actions(scope=scope, actions=actions)
+    memory_service.save_org_memory_for_tenant(
+        "oc_xxx",
+        {
+            "postmortem_style": {
+                "section_labels": {
+                    "follow_up_actions": "已漂移动作：",
+                },
+                "title_prefix": "[SEV-1]",
+            }
+        },
+    )
+
+    pending_action, reply_text = service.build_postmortem_reply(
+        scope=scope,
+        action_id="A2",
+    )
+
+    assert pending_action is not None
+    assert pending_action.postmortem_style_snapshot is not None
+    assert pending_action.postmortem_style_snapshot.title_prefix == "[SEV-2]"
+    assert "团队后续动作：" in reply_text
+    assert "已漂移动作：" not in reply_text
