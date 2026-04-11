@@ -47,6 +47,12 @@ class MemoryService:
     def save_org_memory(self, scope: MemoryScope, payload: dict[str, object]) -> None:
         self._save_json_mapping(self._org_memory_path(scope), payload)
 
+    def load_org_memory_for_tenant(self, tenant_id: str) -> dict[str, object]:
+        return self._load_json_mapping(self.base_dir / tenant_id / "org.json")
+
+    def save_org_memory_for_tenant(self, tenant_id: str, payload: dict[str, object]) -> None:
+        self._save_json_mapping(self.base_dir / tenant_id / "org.json", payload)
+
     def load_thread_state(self, scope: MemoryScope) -> ThreadMemoryState | None:
         path = self._thread_state_path(scope)
         payload = self._load_json_mapping(path)

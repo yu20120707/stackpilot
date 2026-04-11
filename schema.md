@@ -579,6 +579,50 @@ Field rules:
 - `evidence`: optional per-finding evidence refs, but runtime should try to attach diff-hunk evidence whenever a file-scoped finding exists
 - GitHub publication remains approval-gated and is stored as a pending `review_publish` action in the shared action queue
 
+## 10.5 Org Convention Memory Models
+
+The implemented foundation now includes tenant-scoped org convention memory that can shape review defaults and postmortem output.
+
+Org memory example:
+
+```json
+{
+  "review_defaults": {
+    "default_focus_areas": [
+      "security"
+    ]
+  },
+  "postmortem_style": {
+    "template_name": "enterprise-standard",
+    "title_prefix": "[SEV-2]",
+    "follow_up_prefix": "团队跟进：",
+    "section_labels": {
+      "incident_summary": "背景摘要：",
+      "follow_up_actions": "团队后续动作："
+    }
+  }
+}
+```
+
+Field rules:
+
+- `review_defaults.default_focus_areas`: optional array of review-focus enums such as `bug_risk`, `test_gap`, or `security`
+- `postmortem_style.template_name`: optional style label for traceability
+- `postmortem_style.title_prefix`: optional string prepended to generated postmortem titles
+- `postmortem_style.follow_up_prefix`: optional string prepended to generated follow-up actions
+- `postmortem_style.section_labels`: optional mapping used to rename rendered postmortem section headers
+
+Runtime precedence rules:
+
+- explicit review focus in the current request wins
+- user preference memory is consulted next
+- org review defaults are consulted after user memory
+- hardcoded safe defaults remain the final fallback
+
+Constraint:
+
+- org memory may shape output and defaults, but it does not silently rewrite canonical team policy documents
+
 ## 11. Null And Empty Rules
 
 P0 uses these conventions consistently:

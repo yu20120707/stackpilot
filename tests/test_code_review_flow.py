@@ -17,6 +17,7 @@ from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
+from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.knowledge_base import KnowledgeBase
 from app.services.review.diff_reader import DiffReader
 from app.services.review.flow import CodeReviewFlow
@@ -139,7 +140,10 @@ def build_review_flow(
         github_review_client=github_client,
         diff_reader=DiffReader(),
         review_policy_service=ReviewPolicyService(KnowledgeBase(FIXTURES_DIR / "knowledge", max_hits=3)),
-        review_preference_service=ReviewPreferenceService(memory_service),
+        review_preference_service=ReviewPreferenceService(
+            memory_service,
+            org_convention_service=OrgConventionService(memory_service),
+        ),
         review_service=ReviewService(llm_client),
         review_renderer=review_renderer,
         review_publish_service=ReviewPublishService(
@@ -326,6 +330,39 @@ async def test_code_review_flow_reuses_preferred_focus_after_repeated_explicit_r
         memory_service.resolve_scope(
             build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(
                 update={"message_id": "om_review_pref_3", "thread_id": "omt_review_pref_3"}
+            )
+        )
+    )
+    assert review_state is not None
+    assert [item.value for item in review_state.focus_areas] == ["security"]
+
+
+@pytest.mark.anyio
+async def test_code_review_flow_uses_org_default_focus_when_user_has_no_preference(tmp_path: Path) -> None:
+    review_flow, _, _, _, _, memory_service = build_review_flow(
+        tmp_path=tmp_path,
+        llm_response=load_text("analysis", "code_review_success.json"),
+    )
+    memory_service.save_org_memory_for_tenant(
+        "oc_xxx",
+        {
+            "review_defaults": {
+                "default_focus_areas": ["security"],
+            }
+        },
+    )
+
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(
+            update={"message_id": "om_review_org_1", "thread_id": "omt_review_org"}
+        ),
+    )
+
+    review_state = memory_service.load_review_state(
+        memory_service.resolve_scope(
+            build_trigger_event(INLINE_PATCH_MESSAGE).model_copy(
+                update={"message_id": "om_review_org_1", "thread_id": "omt_review_org"}
             )
         )
     )

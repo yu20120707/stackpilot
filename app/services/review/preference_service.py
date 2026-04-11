@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from app.models.contracts import MemoryScope, ReviewFeedbackStatus, ReviewFinding, ReviewFocusArea
+from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.kernel.memory_service import MemoryService
 
 
@@ -16,8 +17,14 @@ URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
 
 
 class ReviewPreferenceService:
-    def __init__(self, memory_service: MemoryService) -> None:
+    def __init__(
+        self,
+        memory_service: MemoryService,
+        *,
+        org_convention_service: OrgConventionService | None = None,
+    ) -> None:
         self.memory_service = memory_service
+        self.org_convention_service = org_convention_service
 
     def resolve_focus_areas(
         self,
@@ -34,8 +41,7 @@ class ReviewPreferenceService:
         if user_preferences:
             return user_preferences, []
 
-        org_memory = self.memory_service.load_org_memory(scope)
-        org_preferences = self._extract_preferred_focus_areas(org_memory)
+        org_preferences = self._load_org_default_focus_areas(scope.tenant_id)
         if org_preferences:
             return org_preferences, []
 
@@ -135,6 +141,15 @@ class ReviewPreferenceService:
         if isinstance(review_preferences, dict):
             return dict(review_preferences)
         return {}
+
+    def _load_org_default_focus_areas(self, tenant_id: str) -> list[ReviewFocusArea]:
+        if self.org_convention_service is not None:
+            defaults = self.org_convention_service.load_review_defaults(tenant_id)
+            if defaults is not None and defaults.default_focus_areas:
+                return defaults.default_focus_areas
+
+        org_memory = self.memory_service.load_org_memory_for_tenant(tenant_id)
+        return self._extract_preferred_focus_areas(org_memory)
 
     def _focus_set_key(self, focus_areas: list[ReviewFocusArea]) -> str:
         return "|".join(sorted(item.value for item in focus_areas))

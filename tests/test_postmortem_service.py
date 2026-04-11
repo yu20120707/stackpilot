@@ -9,6 +9,7 @@ from app.models.contracts import (
     AnalysisResultStatus,
     ConfidenceLevel,
     KnowledgeCitation,
+    OrgPostmortemStyle,
     PostmortemStatus,
     SourceType,
     StructuredSummary,
@@ -145,3 +146,28 @@ async def test_postmortem_service_falls_back_to_summary_backed_draft_for_invalid
     assert draft.follow_up_actions == [item.title for item in build_summary().todo_draft]
     assert draft.open_questions == build_summary().missing_information
     assert draft.citations == build_summary().citations
+
+
+@pytest.mark.anyio
+async def test_postmortem_service_applies_org_style_to_prompt_and_fallback(tmp_path: Path) -> None:
+    prompt_path = tmp_path / "postmortem_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    llm_client = FakeLLMClient("{invalid json")
+    service = PostmortemService(llm_client, prompt_path=prompt_path)
+    org_style = OrgPostmortemStyle(
+        template_name="enterprise-standard",
+        title_prefix="[SEV-2]",
+        follow_up_prefix="团队跟进：",
+        section_labels={"incident_summary": "背景摘要："},
+    )
+
+    draft = await service.generate_draft(
+        request=build_request(),
+        summary=build_summary(),
+        org_style=org_style,
+    )
+
+    assert draft.title.startswith("[SEV-2]")
+    assert all(item.startswith("团队跟进：") for item in draft.follow_up_actions)
+    assert "postmortem_style" in llm_client.calls[0][1]
+    assert "enterprise-standard" in llm_client.calls[0][1]

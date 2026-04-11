@@ -531,7 +531,7 @@
       "id": "MEM-002",
       "title": "Expand org memory and team-style shaping across incident and review workflows",
       "milestone": "M7",
-      "status": "not_started",
+      "status": "done",
       "priority": 21,
       "depends_on": [
         "CR-002"
@@ -547,7 +547,29 @@
         "Approved team conventions can shape postmortem and review output structure.",
         "The new memory layer remains tenant-scoped, auditable, and does not silently rewrite canonical docs."
       ],
-      "notes": "This next milestone should make org memory actually influence output shape and review defaults while keeping explicit user commands higher priority than stored conventions."
+      "notes": "Completed with an OrgConventionService, org-level review default focus shaping, team-style postmortem prompt and renderer shaping, tenant-scoped org-memory helpers, and regression coverage that keeps explicit user commands above stored defaults."
+    },
+    {
+      "id": "GRW-002",
+      "title": "Add canonical knowledge gateway for approved org conventions and review policy",
+      "milestone": "M8",
+      "status": "not_started",
+      "priority": 22,
+      "depends_on": [
+        "MEM-002"
+      ],
+      "deliverables": [
+        "Canonical convention document schema",
+        "Approved convention loader",
+        "Knowledge-base integration for canonical org policy",
+        "Gateway precedence regression tests"
+      ],
+      "acceptance_checks": [
+        "Org review defaults and postmortem style can be sourced from approved canonical docs instead of only mutable org memory payloads.",
+        "Canonical conventions take precedence over ad-hoc org memory while explicit user commands still win at runtime.",
+        "The gateway remains tenant-scoped, auditable, and does not let chat transcripts silently rewrite canonical policy."
+      ],
+      "notes": "This next milestone should anchor reusable team conventions to approved knowledge artifacts so org memory remains helpful without becoming the only source of truth."
     }
   ]
 }

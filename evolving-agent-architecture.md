@@ -39,11 +39,19 @@ Usage:
 - preserve workflow continuity
 - store stable preferences
 - remember approved patterns
+- shape org-level review defaults and postmortem structure
 
 Constraint:
 
 - memory supports decisions
 - memory does not rewrite canonical docs automatically
+
+Runtime precedence for convention-shaped behavior:
+
+- explicit request
+- user preference memory
+- org default memory
+- safe fallback
 
 ### 3.2 Retrieval Layer
 
@@ -153,7 +161,7 @@ Current MVP note:
 - the runtime entry remains Feishu-first
 - a workflow router dispatches explicit review triggers to a dedicated review flow
 - GitHub publication is draft-first and approval-gated
-- review focus can come from explicit request text or stored preference memory
+- review focus can come from explicit request text, stored preference memory, or tenant org defaults
 - accepted findings are recorded explicitly before they can influence draft skill mining
 
 Core user-visible outputs:
@@ -210,6 +218,7 @@ The platform must not automatically:
 Expected new services over time:
 
 - `app/services/kernel/memory_service.py`
+- `app/services/kernel/org_convention_service.py`
 - `app/services/kernel/action_queue_service.py`
 - `app/services/kernel/audit_log_service.py`
 - `app/services/kernel/interaction_recorder.py`

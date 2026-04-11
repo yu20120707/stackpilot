@@ -23,6 +23,8 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - approval-backed GitHub draft review publishing
 - review focus routing with repeated-request user preference memory
 - explicit review finding feedback recording and review-memory persistence
+- org-level review default focus shaping
+- team-style postmortem draft and rendering shaping
 
 Still out of scope for the current foundation:
 
@@ -86,6 +88,7 @@ app/
       audit_log_service.py
       interaction_recorder.py
       memory_service.py
+      org_convention_service.py
     review/
       diff_reader.py
       flow.py
@@ -120,7 +123,7 @@ Module ownership:
 - `core/`: config and logging primitives
 - `models/`: internal contracts defined by `schema.md`
 - `services/`: business orchestration and transformations
-- `services/kernel/`: shared workflow memory and future growth-kernel primitives
+- `services/kernel/`: shared workflow memory, org convention shaping, and future growth-kernel primitives
 - `services/retrieval/`: deterministic evidence planning, routing, and ranking
 - `prompts/`: prompt templates only
 
@@ -234,9 +237,10 @@ One incident-analysis request currently moves through the system in this order:
 6. The knowledge service loads or queries local knowledge documents
 7. The analysis service builds the LLM input and requests a structured summary
 8. For summarize-thread success cases, the incident-action service prepares task-sync and postmortem proposals and stores them in the action queue
-9. The reply renderer converts the structured result into user-facing Feishu text
-10. The Feishu client posts the reply back to the same discussion context
-11. The thread memory service persists the latest successful structured summary state
+9. When tenant org conventions exist, postmortem generation and rendering apply the stored postmortem title, follow-up, and section-label style
+10. The reply renderer converts the structured result into user-facing Feishu text
+11. The Feishu client posts the reply back to the same discussion context
+12. The thread memory service persists the latest successful structured summary state
 
 One AI-code-review request currently moves through the system in this order:
 
@@ -248,7 +252,7 @@ One AI-code-review request currently moves through the system in this order:
 6. For GitHub PR input, the GitHub client attempts to fetch the PR diff
 7. The diff reader normalizes changed files and hunks into a stable review request
 8. The review policy service selects any relevant local policy citations
-9. The review preference service resolves explicit or remembered focus areas
+9. The review preference service resolves focus areas in this order: explicit user request, remembered user preference, tenant org defaults, then safe fallback defaults
 10. The review service prompts the LLM for a structured draft review
 11. The review renderer returns a Feishu draft reply, and GitHub publish is queued as a pending action when applicable
 12. The review memory service persists the latest review state and finding ids for the thread
@@ -332,6 +336,7 @@ Allowed in P0:
 - local action queue files under `data/actions`
 - local knowledge files under `data/knowledge`
 - local thread memory files under `data/memory`
+- local tenant org memory files under `data/memory/<tenant>/org.json`
 - local evidence and audit files under `data/records`
 - local skill candidate files under `data/skills`
 - application logs

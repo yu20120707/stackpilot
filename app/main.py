@@ -15,6 +15,7 @@ from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
+from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.knowledge_base import KnowledgeBase
 from app.services.postmortem_renderer import PostmortemRenderer
 from app.services.postmortem_service import PostmortemService
@@ -76,6 +77,7 @@ def build_services(settings: Settings) -> AppServices:
         )
     )
     memory_service = MemoryService(settings.resolved_memory_dir)
+    org_convention_service = OrgConventionService(memory_service)
     action_queue_service = ActionQueueService(settings.resolved_action_dir)
     audit_log_service = AuditLogService(settings.resolved_records_dir)
     interaction_recorder = InteractionRecorder(
@@ -108,12 +110,16 @@ def build_services(settings: Settings) -> AppServices:
         task_sync_service=task_sync_service,
         postmortem_service=postmortem_service,
         postmortem_renderer=postmortem_renderer,
+        org_convention_service=org_convention_service,
     )
     reply_renderer = ReplyRenderer()
     review_renderer = ReviewRenderer()
     review_service = ReviewService(llm_client)
     review_policy_service = ReviewPolicyService(knowledge_base)
-    review_preference_service = ReviewPreferenceService(memory_service)
+    review_preference_service = ReviewPreferenceService(
+        memory_service,
+        org_convention_service=org_convention_service,
+    )
     review_publish_service = ReviewPublishService(
         action_queue_service=action_queue_service,
         github_review_client=github_review_client,

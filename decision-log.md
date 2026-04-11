@@ -197,3 +197,23 @@ Copy this format for new confirmed decisions.
   - `progress.md`
 - Revisit when:
   - GitHub-side resolution or code-change outcome signals are integrated strongly enough to support more reliable adoption measurement
+
+### DEC-011
+
+- Date: 2026-04-11
+- Status: confirmed
+- Decision: runtime convention resolution must follow `explicit request -> user preference memory -> org defaults -> safe fallback`, and org memory may shape draft structure but may not silently replace canonical team policy.
+- Why: direct operator intent must remain stronger than remembered team defaults, while tenant org memory should still be strong enough to shape postmortem structure and default review focus in a predictable way.
+- Alternatives considered:
+  - let org defaults override explicit user requests
+  - keep org memory purely passive until a later milestone
+- Impacted files:
+  - `app/services/kernel/org_convention_service.py`
+  - `app/services/review/preference_service.py`
+  - `app/services/postmortem_service.py`
+  - `app/services/postmortem_renderer.py`
+  - `app/services/incident_action_service.py`
+  - `feature-list.md`
+  - `tech-spec.md`
+- Revisit when:
+  - approved canonical convention docs exist and runtime precedence needs to include a doc-backed gateway layer

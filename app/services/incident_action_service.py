@@ -7,6 +7,7 @@ from app.models.contracts import (
     AnalysisRequest,
     AnalysisResultStatus,
     ExternalTaskTarget,
+    OrgPostmortemStyle,
     PendingActionStatus,
     PendingActionType,
     PendingIncidentAction,
@@ -16,6 +17,7 @@ from app.models.contracts import (
     TriggerCommand,
 )
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.postmortem_renderer import PostmortemRenderer
 from app.services.postmortem_service import PostmortemService
 from app.services.task_sync_service import TaskSyncService
@@ -29,11 +31,13 @@ class IncidentActionService:
         task_sync_service: TaskSyncService,
         postmortem_service: PostmortemService,
         postmortem_renderer: PostmortemRenderer,
+        org_convention_service: OrgConventionService | None = None,
     ) -> None:
         self.action_queue_service = action_queue_service
         self.task_sync_service = task_sync_service
         self.postmortem_service = postmortem_service
         self.postmortem_renderer = postmortem_renderer
+        self.org_convention_service = org_convention_service
 
     def should_prepare_actions(
         self,
@@ -78,6 +82,7 @@ class IncidentActionService:
         postmortem_draft = await self.postmortem_service.generate_draft(
             request=request,
             summary=summary,
+            org_style=self._load_postmortem_style(scope),
         )
         postmortem_action = PendingIncidentAction(
             action_id=action_ids[1],
@@ -174,7 +179,10 @@ class IncidentActionService:
         if action.action_type is not PendingActionType.POSTMORTEM_DRAFT or action.postmortem_draft is None:
             return None, f"动作 {action.action_id} 不是可回写的复盘动作。"
 
-        rendered_draft = self.postmortem_renderer.render(action.postmortem_draft)
+        rendered_draft = self.postmortem_renderer.render(
+            action.postmortem_draft,
+            org_style=self._load_postmortem_style(scope),
+        )
         return action, f"动作执行结果：\n已回写复盘草稿 {action.action_id}。\n\n{rendered_draft}"
 
     def mark_postmortem_action_executed(
@@ -250,3 +258,8 @@ class IncidentActionService:
         else:
             lines.append(f"- 执行失败：{result.message}")
         return "\n".join(lines)
+
+    def _load_postmortem_style(self, scope: ActionScope) -> OrgPostmortemStyle | None:
+        if self.org_convention_service is None:
+            return None
+        return self.org_convention_service.load_postmortem_style(scope.tenant_id)

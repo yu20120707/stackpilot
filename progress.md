@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-11
-- Phase: `CR-002` complete
-- Overall status: the codebase now has a Feishu-first AI code review workflow with explicit focus routing, repeated-request preference memory, explicit finding adoption signals, and review-focus draft skill candidates on top of the shared growth kernel
-- Recommended next task: `MEM-002 Expand org memory and team-style shaping across incident and review workflows`
-- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, draft skill candidates, workflow-router dispatching, and `99` passing regression tests
+- Phase: `MEM-002` complete
+- Overall status: the codebase now has tenant-scoped org convention shaping across incident and review workflows, including org-level review default focus and team-style postmortem draft/render shaping on top of the shared growth kernel
+- Recommended next task: `GRW-002 Add canonical knowledge gateway for approved org conventions and review policy`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, org convention shaping, draft skill candidates, workflow-router dispatching, and `104` passing regression tests
 
 ## Canonical Files
 
@@ -33,6 +33,8 @@
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
 - AI code review now supports explicit PR-link or inline diff triggers and keeps external GitHub publication behind approval
 - Review focus can now come from explicit request text or repeated user preference memory, and accepted findings can be recorded explicitly from the same Feishu thread
+- Review focus resolution now follows `explicit request -> user memory -> org defaults -> safe fallback`
+- Tenant org memory can now shape postmortem title, follow-up wording, and section labels without overriding explicit user intent
 - the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
 - high-risk external actions remain approval-gated through a thread-scoped pending action queue
 - skill candidates remain draft-only by default and do not participate in runtime routing yet
@@ -49,7 +51,7 @@
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
 - GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
-- Org-level convention memory still exists mainly as a passive store; it does not yet shape output strongly enough across incident and review workflows.
+- Canonical truth for org conventions still lives in mutable org memory files; an approved-doc gateway is not implemented yet.
 
 ## Handoff Rules
 
@@ -360,6 +362,47 @@ Required fields:
   - Review adoption is currently recorded from explicit Feishu feedback commands rather than from GitHub thread resolution signals
 - Next recommended task:
   - `MEM-002 Expand org memory and team-style shaping across incident and review workflows`
+
+### Session 028
+
+- Date: 2026-04-11
+- Primary task: `MEM-002`
+- Objective: make tenant-scoped org memory shape runtime behavior safely by applying org-level review defaults and team-style postmortem conventions across the incident and review workflows
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/memory_service.py`
+  - `app/services/kernel/org_convention_service.py`
+  - `app/services/postmortem_renderer.py`
+  - `app/services/postmortem_service.py`
+  - `app/services/review/preference_service.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_org_convention_service.py`
+  - `tests/test_postmortem_renderer.py`
+  - `tests/test_postmortem_service.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_org_convention_service.py tests/test_postmortem_service.py tests/test_postmortem_renderer.py tests/test_incident_action_service.py tests/test_code_review_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `MEM-002` complete
+  - Org memory now drives review default focus and team-style postmortem shaping without overriding explicit user requests
+  - Incident postmortem drafts and rendered write-backs now honor tenant-scoped title, follow-up, and section-label conventions
+  - The shared kernel now has a dedicated org convention service instead of forcing each workflow to parse raw org memory payloads directly
+- Blockers:
+  - Approved canonical convention docs still do not exist, so mutable org memory remains the only runtime source for team defaults
+  - Review adoption still depends on explicit in-thread feedback rather than GitHub-side outcome signals
+- Next recommended task:
+  - `GRW-002 Add canonical knowledge gateway for approved org conventions and review policy`
 
 ### Session 001
 

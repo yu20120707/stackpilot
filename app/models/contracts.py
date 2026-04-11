@@ -267,6 +267,21 @@ class ReviewMemoryState(BaseModel):
     updated_at: datetime
 
 
+class OrgReviewDefaults(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    default_focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
+
+
+class OrgPostmortemStyle(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    template_name: str | None = None
+    title_prefix: str | None = None
+    follow_up_prefix: str | None = None
+    section_labels: dict[str, NonEmptyText] = Field(default_factory=dict)
+
+
 class AnalysisRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

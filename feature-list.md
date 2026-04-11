@@ -7,7 +7,7 @@ This document defines the product-level feature inventory for the next version o
 Current codebase reality:
 
 - the implemented foundation is still `Feishu incident analysis`
-- the next roadmap is `controlled growth + action loop + AI code review`
+- the implemented expansion now includes `controlled growth + action loop + AI code review + org convention shaping`
 
 This file therefore serves two purposes:
 
@@ -54,18 +54,18 @@ These capabilities already exist and remain the base layer.
 
 ## 5. Incident Workflow Features
 
-These are the incident-domain upgrades around the implemented baseline. Continuity, retrieval quality, and the first approval-backed action loop are now in place; the recorder and richer team-style shaping remain queued.
+These are the incident-domain upgrades around the implemented baseline. Continuity, retrieval quality, the approval-backed action loop, the interaction recorder, and the first org-style shaping layer are now in place.
 
 | ID | Feature | Status | Priority | Summary |
 | --- | --- | --- | --- | --- |
 | INC-001 | Explicit thread memory | Implemented | High | Replace marker-based follow-up inference with persisted thread state |
-| INC-002 | User and org memory | Planned | Medium | Store stable output preferences and team conventions |
+| INC-002 | User and org memory | Implemented | Medium | Store stable review preferences and tenant-scoped team conventions that shape defaults |
 | INC-003 | Retrieval planning and routing | Implemented | High | Upgrade keyword retrieval into planner, router, and evidence ranking |
 | INC-004 | Evidence quality threshold | Implemented | High | Prevent weak citations from being treated as sufficient proof |
 | INC-005 | Action proposal queue | Implemented | High | Persist task and postmortem proposals before confirmation |
 | INC-006 | Approval-backed action execution | Implemented | High | Confirm, execute, and write back external task results |
-| INC-007 | Incident interaction recorder | Planned | Medium | Record trigger, output, correction, approval, and adoption signals |
-| INC-008 | Team-style postmortem output | Planned | Medium | Let approved team conventions shape draft structure |
+| INC-007 | Incident interaction recorder | Implemented | Medium | Record trigger, output, correction, approval, and adoption signals |
+| INC-008 | Team-style postmortem output | Implemented | Medium | Let tenant-scoped team conventions shape draft structure and section labels |
 
 ### INC-001 Explicit Thread Memory
 
@@ -104,7 +104,7 @@ These features are shared by incident and code-review workflows.
 | ID | Feature | Status | Priority | Summary |
 | --- | --- | --- | --- | --- |
 | GR-001 | Evidence ledger | Implemented | High | Record factual visible workflow outcomes, corrections, and acceptance signals |
-| GR-002 | Memory layer | Implemented | High | Support thread, user, and org-level reusable context |
+| GR-002 | Memory layer | Implemented | High | Support thread, user, and org-level reusable context plus org convention shaping |
 | GR-003 | Approval policy | Implemented | High | Centralize approval-backed action and skill lifecycle gates |
 | GR-004 | Audit log and rollback | Implemented | High | Make every promotion and execution traceable and reversible |
 | GR-005 | Skill candidate registry | Implemented | Medium | Store draft reusable workflow patterns |
@@ -143,6 +143,7 @@ This is the second workflow built on the shared kernel.
 
 The `M5` MVP is now implemented for explicit Feishu-triggered review requests using inline patch or GitHub PR input, structured draft findings, safe degraded replies, and approval-backed GitHub draft publishing.
 The first `M6` safe-reuse slice is also implemented: explicit review focus routing, repeated-request preference memory, explicit finding feedback recording, and draft review-focus skill candidates.
+The `M7` org-memory slice is now also implemented: explicit user focus still wins, but org-level review defaults can shape review focus when user memory is absent.
 
 | ID | Feature | Priority | Summary |
 | --- | --- | --- | --- |
@@ -204,6 +205,8 @@ User-visible outcome:
 | M4 | Activate controlled growth | GR-005, GR-006, GR-007, GR-008 |
 | M5 | Launch AI code review MVP | CR-001, CR-002, CR-003, CR-004, CR-005, CR-007 |
 | M6 | Grow review reuse safely | CR-006, CR-008, CR-009, CR-010 |
+| M7 | Apply org conventions across workflows | INC-002, INC-007, INC-008, GR-002 |
+| M8 | Anchor canonical team knowledge | GR-008 |
 
 ## 9. Explicit Non-Goals
 

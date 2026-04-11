@@ -18,6 +18,8 @@ from app.models.contracts import (
 )
 from app.services.incident_action_service import IncidentActionService
 from app.services.kernel.action_queue_service import ActionQueueService
+from app.services.kernel.memory_service import MemoryService
+from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.postmortem_renderer import PostmortemRenderer
 from app.services.postmortem_service import PostmortemService
 from app.services.task_sync_service import TaskSyncService
@@ -228,3 +230,47 @@ async def test_incident_action_service_builds_postmortem_reply_and_marks_executi
     assert persisted_action is not None
     assert persisted_action.status.value == "executed"
     assert persisted_action.execution_message == "postmortem_draft_written_back"
+
+
+@pytest.mark.anyio
+async def test_incident_action_service_uses_org_postmortem_style(tmp_path: Path) -> None:
+    prompt_path = tmp_path / "postmortem_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_xxx")
+    action_queue_service = ActionQueueService(tmp_path / "actions")
+    memory_service = MemoryService(tmp_path / "memory")
+    memory_service.save_org_memory_for_tenant(
+        "oc_xxx",
+        {
+            "postmortem_style": {
+                "title_prefix": "[SEV-2]",
+                "follow_up_prefix": "团队跟进：",
+                "section_labels": {
+                    "follow_up_actions": "团队后续动作：",
+                },
+            }
+        },
+    )
+    service = IncidentActionService(
+        action_queue_service=action_queue_service,
+        task_sync_service=TaskSyncService(),
+        postmortem_service=PostmortemService(FakeLLMClient(), prompt_path=prompt_path),
+        postmortem_renderer=PostmortemRenderer(),
+        org_convention_service=OrgConventionService(memory_service),
+    )
+    actions = await service.prepare_actions(
+        scope=scope,
+        request=build_request(),
+        summary=build_summary(),
+    )
+    service.persist_actions(scope=scope, actions=actions)
+
+    pending_action, reply_text = service.build_postmortem_reply(
+        scope=scope,
+        action_id="A2",
+    )
+
+    assert pending_action is not None
+    assert pending_action.postmortem_draft is not None
+    assert pending_action.postmortem_draft.title.startswith("[SEV-2]")
+    assert "团队后续动作：" in reply_text
