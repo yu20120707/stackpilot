@@ -43,6 +43,12 @@ Recommended fixture types:
 | T-011 | End-to-end fixture flow | Automated | Yes |
 | T-012 | Unsupported chatter no-op | Automated | Yes |
 | T-013 | Explicit thread memory continuity | Automated | Post-P0 |
+| T-014 | Release evidence route preference | Automated | Post-P0 |
+| T-015 | Weak evidence filtering | Automated | Post-P0 |
+| T-016 | Pending action persistence | Automated | Post-P0 |
+| T-017 | Approval-backed incident action execution | Automated | Post-P0 |
+| T-018 | Interaction evidence recording | Automated | Post-P0 |
+| T-019 | Draft skill candidate mining | Automated | Post-P0 |
 
 ## 4. Detailed Test Cases
 
@@ -269,6 +275,107 @@ Expected result:
 - The service restores the previous summary from thread memory
 - Only messages after the previous processed cursor are treated as new
 - When memory is absent, the old heuristic path still degrades safely
+
+### T-014 Release Evidence Route Preference
+
+Goal:
+
+- Confirm release-related incident threads prefer release notes over generic documents when both are available.
+
+Input:
+
+- Thread discussing a deploy, rollback, or release regression
+- Knowledge source containing both release notes and general SOP documents
+
+Expected result:
+
+- Retrieval returns release-note evidence ahead of generic documents
+- The top citation in the rendered incident reply comes from the release route
+- The behavior stays deterministic across repeated runs
+
+### T-015 Weak Evidence Filtering
+
+Goal:
+
+- Confirm low-signal keyword overlap does not bypass insufficient-context safeguards.
+
+Input:
+
+- Ambiguous thread with only broad shared terms
+- Knowledge source containing weakly related documents but no strong route match
+
+Expected result:
+
+- Retrieval returns no strong citation candidates, or only citations above the configured threshold
+- The analysis layer still emits `insufficient_context` when no reliable evidence remains
+- The system does not convert a weak hit into a confident diagnosis
+
+### T-016 Pending Action Persistence
+
+Goal:
+
+- Confirm summarize-thread success replies can persist reviewable task-sync and postmortem actions before execution.
+
+Input:
+
+- A summarize-thread trigger with a successful structured summary
+
+Expected result:
+
+- The thread-scoped action queue stores pending task-sync and postmortem actions
+- The user-facing reply includes action ids and approval commands
+- If the reply send fails, the just-created pending actions are discarded
+
+### T-017 Approval-Backed Incident Action Execution
+
+Goal:
+
+- Confirm explicit approval commands execute only the targeted action and write the result back to the same thread.
+
+Input:
+
+- An existing pending action such as `A1`
+- A thread message containing `批准动作 A1`
+
+Expected result:
+
+- The system resolves the action only within the current thread
+- Task-sync actions execute with `confirmed = true`
+- Postmortem actions write the rendered draft back to the same thread
+- Repeated approval does not create duplicate side effects
+
+### T-018 Interaction Evidence Recording
+
+Goal:
+
+- Confirm visible workflow outcomes are appended to a thread-scoped evidence ledger and tenant audit log.
+
+Input:
+
+- A successful summarize-thread reply
+- A failed reply-send attempt
+
+Expected result:
+
+- Successful visible replies append `analysis_reply_sent` and, when applicable, `actions_proposed`
+- Reply-send failures append `reply_send_failed` only
+- Repeated delivery with the same correlation key does not duplicate evidence
+
+### T-019 Draft Skill Candidate Mining
+
+Goal:
+
+- Confirm repeated successful approval-loop patterns create draft-only skill candidates.
+
+Input:
+
+- At least two successful `action_executed` records with the same supported pattern key
+
+Expected result:
+
+- A draft skill candidate is written under `data/skills`
+- Lifecycle audit entries record candidate creation
+- Activation is rejected until explicit approval occurs through the registry path
 
 ## 5. Manual Verification Checklist
 

@@ -1,6 +1,9 @@
 from app.models.contracts import TriggerCommand
 from app.services.command_parser import (
     SUPPORTED_TRIGGER_PHRASES,
+    extract_approved_action_id,
+    extract_promotion_candidate_id,
+    extract_review_feedback,
     normalize_message_text,
     parse_trigger_command,
 )
@@ -11,6 +14,7 @@ def test_command_parser_exports_expected_command_slots() -> None:
         TriggerCommand.ANALYZE_INCIDENT,
         TriggerCommand.SUMMARIZE_THREAD,
         TriggerCommand.RERUN_ANALYSIS,
+        TriggerCommand.REVIEW_CODE,
     }
 
 
@@ -25,6 +29,49 @@ def test_command_parser_matches_broader_natural_language_triggers() -> None:
     assert parse_trigger_command("@stackpilot 分析一下问题在哪") is TriggerCommand.ANALYZE_INCIDENT
     assert parse_trigger_command("@stackpilot 总结一下当前结论") is TriggerCommand.SUMMARIZE_THREAD
     assert parse_trigger_command("@stackpilot 再分析一下") is TriggerCommand.RERUN_ANALYSIS
+
+
+def test_command_parser_matches_action_approval_commands() -> None:
+    assert parse_trigger_command("批准动作 A1") is TriggerCommand.APPROVE_ACTION
+    assert parse_trigger_command("@stackpilot 确认动作 a2") is TriggerCommand.APPROVE_ACTION
+    assert extract_approved_action_id("执行动作 a3") == "A3"
+
+
+def test_command_parser_matches_review_feedback_commands() -> None:
+    assert parse_trigger_command("采纳建议 F1") is TriggerCommand.REVIEW_FEEDBACK
+    assert parse_trigger_command("@stackpilot 忽略finding f2") is TriggerCommand.REVIEW_FEEDBACK
+    assert extract_review_feedback("接受审查 F3") == ("accepted", "F3")
+    assert extract_review_feedback("驳回建议 f4") == ("ignored", "F4")
+
+
+def test_command_parser_matches_review_outcome_sync_commands() -> None:
+    assert parse_trigger_command("同步 review 结果") is TriggerCommand.SYNC_REVIEW_OUTCOME
+    assert parse_trigger_command("@stackpilot 同步审查结果 https://github.com/openai/demo/pull/12") is TriggerCommand.SYNC_REVIEW_OUTCOME
+
+
+def test_command_parser_matches_canonical_promotion_commands() -> None:
+    assert parse_trigger_command("沉淀规范 skill-review-security-focus") is TriggerCommand.PROMOTE_CANONICAL
+    assert parse_trigger_command("@stackpilot 推广技能 skill-review-security-focus") is TriggerCommand.PROMOTE_CANONICAL
+    assert extract_promotion_candidate_id("提升为规范 skill-review-security-focus") == "skill-review-security-focus"
+
+
+def test_command_parser_matches_manual_code_review_triggers() -> None:
+    assert (
+        parse_trigger_command("@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12")
+        is TriggerCommand.REVIEW_CODE
+    )
+    assert (
+        parse_trigger_command(
+            "@stackpilot 审一下这个 diff ```diff\n"
+            "diff --git a/app/services/tickets.py b/app/services/tickets.py\n"
+            "--- a/app/services/tickets.py\n"
+            "+++ b/app/services/tickets.py\n"
+            "@@ -10,2 +10,4 @@\n"
+            "+title = payload.get('title').strip()\n"
+            "```"
+        )
+        is TriggerCommand.REVIEW_CODE
+    )
 
 
 def test_command_parser_ignores_unsupported_chatter() -> None:

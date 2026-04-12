@@ -15,6 +15,19 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - postmortem draft generation
 - confirmation-gated task-sync contract
 - explicit local thread memory for workflow continuity
+- deterministic retrieval planning, routing, and evidence ranking
+- pending incident action persistence with approval-backed execution
+- append-only evidence recording and draft skill candidate generation
+- manual AI code review from inline diff or GitHub PR input
+- deterministic diff normalization and structured draft review findings
+- approval-backed GitHub draft review publishing
+- durable GitHub publish anchors and same-thread repo-side outcome sync
+- review focus routing with repeated-request user preference memory
+- explicit review finding feedback recording and review-memory persistence
+- org-level review default focus shaping
+- team-style postmortem draft and rendering shaping
+- approved canonical convention docs under the knowledge layer
+- approval-backed promotion of approved skill candidates into versioned canonical convention docs
 
 Still out of scope for the current foundation:
 
@@ -51,6 +64,7 @@ app/
     feishu.py
   clients/
     feishu_client.py
+    github_review_client.py
     llm_client.py
   core/
     config.py
@@ -61,20 +75,54 @@ app/
     analysis_prompt.md
   services/
     command_parser.py
-    thread_reader.py
     knowledge_base.py
-    analysis_service.py
-    reply_renderer.py
+    workflow_router.py
+    incident/
+      analysis_service.py
+      feishu_live_flow.py
+      incident_action_service.py
+      postmortem_renderer.py
+      postmortem_service.py
+      reply_renderer.py
+      task_sync_service.py
+      thread_reader.py
+    growth/
+      convention_promotion_service.py
+      skill_miner.py
+      skill_registry.py
     kernel/
+      action_queue_service.py
+      audit_log_service.py
+      canonical_convention_service.py
+      interaction_recorder.py
       memory_service.py
+      org_convention_service.py
+    review/
+      diff_reader.py
+      flow.py
+      input_parser.py
+      outcome_service.py
+      preference_service.py
+      policy_service.py
+      publish_service.py
+      renderer.py
+      service.py
+    retrieval/
+      planner.py
+      router.py
+      ranker.py
+      service.py
 tests/
   fixtures/
   test_health.py
   test_command_parser.py
   test_analysis_contracts.py
 data/
+  actions/
   knowledge/
   memory/
+  records/
+  skills/
 ```
 
 Module ownership:
@@ -84,6 +132,10 @@ Module ownership:
 - `core/`: config and logging primitives
 - `models/`: internal contracts defined by `schema.md`
 - `services/`: business orchestration and transformations
+- `services/incident/`: incident-domain flows, rendering, and action helpers
+- `services/growth/`: skill lifecycle and canonical-promotion orchestration
+- `services/kernel/`: shared workflow memory, org convention shaping, and future growth-kernel primitives
+- `services/retrieval/`: deterministic evidence planning, routing, and ranking
 - `prompts/`: prompt templates only
 
 ## 4. Environment Variables
@@ -105,17 +157,28 @@ Optional for P0:
 - `FEISHU_ENCRYPT_KEY`
 - `FEISHU_VERIFICATION_TOKEN`
 - `LLM_TIMEOUT_SECONDS`
+- `GITHUB_API_BASE_URL`
+- `GITHUB_TOKEN`
+- `GITHUB_TIMEOUT_SECONDS`
 - `MAX_THREAD_MESSAGES`
 - `MAX_KNOWLEDGE_HITS`
+- `ACTION_DIR`
 - `MEMORY_DIR`
+- `RECORDS_DIR`
+- `SKILLS_DIR`
 
 Default behavior:
 
 - `KNOWLEDGE_DIR` defaults to `data/knowledge`
 - `LLM_TIMEOUT_SECONDS` defaults to `30`
+- `GITHUB_API_BASE_URL` defaults to `https://api.github.com`
+- `GITHUB_TIMEOUT_SECONDS` defaults to `20`
 - `MAX_THREAD_MESSAGES` defaults to `50`
 - `MAX_KNOWLEDGE_HITS` defaults to `5`
+- `ACTION_DIR` defaults to `data/actions`
 - `MEMORY_DIR` defaults to `data/memory`
+- `RECORDS_DIR` defaults to `data/records`
+- `SKILLS_DIR` defaults to `data/skills`
 
 ## 5. External Routes
 
@@ -151,8 +214,15 @@ P0 supported manual commands:
 - `分析一下这次故障`
 - `帮我总结当前结论`
 - `基于最新信息重试`
+- `批准动作 A1`
+- `帮我 review 这个 PR https://github.com/org/repo/pull/123`
+- `审一下这个 diff` with inline patch content
+- `采纳建议 F1`
+- `忽略建议 F2`
+- `同步 review 结果`
+- `沉淀规范 skill-review-security-focus`
 
-The route must hand off a normalized `AnalysisRequest` object to the service layer.
+The route must hand off a normalized trigger event to a workflow router, which then dispatches either incident analysis or AI code review to the service layer.
 
 ## 6. Callback Handling Rules
 
@@ -175,12 +245,56 @@ One incident-analysis request currently moves through the system in this order:
 1. Feishu callback reaches `/api/feishu/events`
 2. The route validates and normalizes the event
 3. The command parser extracts the user intent
-4. The thread reader loads the current thread or message context
-5. The knowledge service loads or queries local knowledge documents
-6. The analysis service builds the LLM input and requests a structured summary
-7. The reply renderer converts the structured result into user-facing Feishu text
-8. The Feishu client posts the reply back to the same discussion context
-9. The thread memory service persists the latest successful structured summary state
+4. The workflow router dispatches incident-analysis commands to the incident live flow
+5. The thread reader loads the current thread or message context
+6. The knowledge service loads local knowledge documents and approved tenant-scoped canonical convention docs when available
+7. The analysis service builds the LLM input and requests a structured summary
+8. For summarize-thread success cases, the incident-action service prepares task-sync and postmortem proposals and stores them in the action queue
+9. When tenant org conventions exist, postmortem generation and rendering apply the resolved effective style, and the pending action stores a snapshot so later write-back does not drift if mutable org memory changes
+10. The reply renderer converts the structured result into user-facing Feishu text
+11. The Feishu client posts the reply back to the same discussion context
+12. The thread memory service persists the latest successful structured summary state
+
+One AI-code-review request currently moves through the system in this order:
+
+1. Feishu callback reaches `/api/feishu/events`
+2. The route validates and normalizes the event
+3. The command parser extracts an explicit code-review trigger
+4. The workflow router dispatches the request to the review flow
+5. The review input parser extracts either an inline patch or a GitHub PR URL
+6. For GitHub PR input, the GitHub client attempts to fetch the PR diff
+7. The diff reader normalizes changed files and hunks into a stable review request
+8. The review policy service selects relevant policy citations from general knowledge plus approved tenant-scoped canonical review docs
+9. The review preference service resolves focus areas in this order: explicit user request, remembered user preference, approved canonical defaults, mutable org defaults, then safe fallback defaults
+10. The review service prompts the LLM for a structured draft review
+11. The review renderer returns a Feishu draft reply, and GitHub publish is queued as a pending action when applicable
+12. The review memory service persists the latest review state and finding ids for the thread
+13. Users can approve the pending publish action from the same thread to post a draft comment back to GitHub
+14. Users can explicitly mark findings as accepted or ignored from the same thread, and the interaction recorder stores those feedback signals for later mining
+
+Canonical convention promotion now moves through this order:
+
+1. A user explicitly requests promotion with a command such as `沉淀规范 skill-review-security-focus`
+2. The convention-promotion service loads the approved skill candidate and builds a versioned canonical-doc snapshot
+3. The service persists a pending `canonical_convention_promotion` action in the shared action queue
+4. A user approves the pending action with `批准动作 A1`
+5. The canonical convention service writes a versioned document under `data/knowledge/canonical/<tenant>`
+6. The audit log records the promotion event, and the skill candidate is activated when promotion succeeds
+
+Approval-backed incident actions move through this order:
+
+1. Feishu callback accepts `批准动作 A1`
+2. The command parser extracts the action id from the thread message
+3. The incident-action service resolves the pending action from the thread-scoped queue
+4. The selected task-sync or postmortem action executes under explicit approval
+5. The result is written back to the same thread
+
+Growth-kernel recording currently moves through this order:
+
+1. A visible analysis reply or approval result is sent successfully
+2. The interaction recorder appends thread-scoped evidence and tenant-scoped audit summaries
+3. The skill miner evaluates repeated successful approval-loop patterns for the tenant
+4. If the threshold is met, a draft skill candidate is written under `data/skills`
 
 The route layer should not contain business logic beyond validation and normalization.
 
@@ -191,14 +305,16 @@ P0 knowledge source is local and controlled.
 Requirements:
 
 - read local Markdown or text documents only
-- support a simple matching strategy good enough for P0
+- read approved tenant-scoped canonical convention docs from `data/knowledge/canonical/<tenant>/*.canonical.json`
+- support deterministic planning, routing, ranking, and bounded second-pass retrieval
 - return a bounded set of citation candidates
 - preserve source labels so the reply can cite them
+- filter weak evidence so low-signal hits do not bypass insufficient-context safeguards
+- never expose another tenant's canonical docs in the current request scope
 
 P0 does not require:
 
 - vector search
-- reranking
 - document sync pipelines
 - database-backed metadata
 
@@ -241,8 +357,13 @@ P0 has no mandatory database requirement.
 
 Allowed in P0:
 
+- local action queue files under `data/actions`
 - local knowledge files under `data/knowledge`
+- local approved canonical convention docs under `data/knowledge/canonical`
 - local thread memory files under `data/memory`
+- local tenant org memory files under `data/memory/<tenant>/org.json`
+- local evidence and audit files under `data/records`
+- local skill candidate files under `data/skills`
 - application logs
 
 Not required in P0:
@@ -269,8 +390,8 @@ P0 should be considered implementable only if the following can be tested:
 This foundation spec still does not define:
 
 - automatic incident detection
-- unapproved task execution
-- advanced retrieval
-- AI code review publish flow
+- autonomous task execution without approval
+- external vector-backed retrieval infrastructure
+- automatic code fixing or commit submission
 
 Those belong to later milestones and should not be pulled into the implemented foundation by default.

@@ -11,10 +11,10 @@ from app.models.contracts import (
     FeishuThreadLoadResponse,
     NormalizedFeishuMessageEvent,
 )
-from app.services.analysis_service import AnalysisService
+from app.services.incident.analysis_service import AnalysisService
 from app.services.knowledge_base import KnowledgeBase
-from app.services.reply_renderer import ReplyRenderer
-from app.services.thread_reader import ThreadReader
+from app.services.incident.reply_renderer import ReplyRenderer
+from app.services.incident.thread_reader import ThreadReader
 from app.clients.feishu_client import FeishuClient
 
 

@@ -1,6 +1,6 @@
 {
   "project": "stackpilot",
-  "last_updated": "2026-04-11",
+  "last_updated": "2026-04-12",
   "status_definitions": {
     "not_started": "No implementation work has begun.",
     "in_progress": "Actively being implemented or refined.",
@@ -421,7 +421,7 @@
       "id": "RET-001",
       "title": "Upgrade retrieval into planner-router-ranker pipeline",
       "milestone": "M2",
-      "status": "not_started",
+      "status": "done",
       "priority": 16,
       "depends_on": [
         "EVL-001"
@@ -437,13 +437,13 @@
         "Weak evidence no longer bypasses insufficient-context safeguards.",
         "Retrieval remains deterministic and locally testable."
       ],
-      "notes": "This milestone implements a lightweight Agentic RAG path without introducing external vector infrastructure."
+      "notes": "Completed with a deterministic retrieval package under app/services/retrieval, a stable knowledge-base facade, weak-evidence filtering, bounded second-pass recall, and regression coverage for route preference and insufficient-context safety."
     },
     {
       "id": "ACT-001",
       "title": "Add action proposal queue and approval-backed incident actions",
       "milestone": "M3",
-      "status": "not_started",
+      "status": "done",
       "priority": 17,
       "depends_on": [
         "RET-001"
@@ -459,13 +459,13 @@
         "High-risk actions require explicit user confirmation.",
         "Approved actions can be executed and written back to the thread."
       ],
-      "notes": "This milestone closes the incident workflow loop and makes the project materially stronger for interviews."
+      "notes": "Completed with a file-backed thread-scoped action queue under app/services/kernel, summarize-thread action proposal creation, explicit approval commands like '批准动作 A1', and approval-backed task-sync/postmortem write-back coverage."
     },
     {
       "id": "GRW-001",
       "title": "Add controlled growth kernel with recorder and skill candidates",
       "milestone": "M4",
-      "status": "not_started",
+      "status": "done",
       "priority": 18,
       "depends_on": [
         "ACT-001"
@@ -481,13 +481,13 @@
         "Reusable patterns can be stored as draft skill candidates.",
         "No candidate skill becomes active without approval."
       ],
-      "notes": "This is the self-evolution layer, but implemented as controlled growth rather than autonomous self-modification."
+      "notes": "Completed with append-only thread evidence, tenant audit logs, a draft-only skill registry under data/skills, deterministic pattern mining for repeated approval loops, and lifecycle guards that prevent activation before approval."
     },
     {
       "id": "CR-001",
       "title": "Launch AI code review MVP on the shared growth kernel",
       "milestone": "M5",
-      "status": "not_started",
+      "status": "done",
       "priority": 19,
       "depends_on": [
         "GRW-001"
@@ -503,7 +503,139 @@
         "The system returns structured, evidence-backed findings.",
         "Review publication remains approval-gated."
       ],
-      "notes": "The first AI code review milestone should focus on findings and review drafts, not automatic fixes or autonomous code modification."
+      "notes": "Completed with a Feishu-first AI review flow, manual PR or patch trigger parsing, deterministic diff normalization, structured draft findings, optional GitHub PR diff fetch, approval-backed GitHub draft comment publishing, and workflow-router wiring that keeps incident and review flows separate."
+    },
+    {
+      "id": "CR-002",
+      "title": "Grow review reuse safely with policy routing and adoption signals",
+      "milestone": "M6",
+      "status": "done",
+      "priority": 20,
+      "depends_on": [
+        "CR-001"
+      ],
+      "deliverables": [
+        "Review policy routing",
+        "Adoption recording",
+        "Review preference memory",
+        "Review skill candidate mining"
+      ],
+      "acceptance_checks": [
+        "Teams can bias review focus toward bug risk, test gaps, or security-oriented checks.",
+        "The system records whether review findings were published, accepted, or ignored.",
+        "Review-specific reusable patterns still remain candidate-first and approval-gated."
+      ],
+      "notes": "Completed with explicit review-focus routing, repeated-request preference memory, review-state persistence, explicit finding feedback commands, and review-focus draft skill candidates mined from accepted findings."
+    },
+    {
+      "id": "MEM-002",
+      "title": "Expand org memory and team-style shaping across incident and review workflows",
+      "milestone": "M7",
+      "status": "done",
+      "priority": 21,
+      "depends_on": [
+        "CR-002"
+      ],
+      "deliverables": [
+        "Org-level review defaults",
+        "Team-style postmortem shaping",
+        "Cross-workflow convention store",
+        "Org-memory regression tests"
+      ],
+      "acceptance_checks": [
+        "Org-level conventions can shape review focus defaults without overriding explicit user requests.",
+        "Approved team conventions can shape postmortem and review output structure.",
+        "The new memory layer remains tenant-scoped, auditable, and does not silently rewrite canonical docs."
+      ],
+      "notes": "Completed with an OrgConventionService, org-level review default focus shaping, team-style postmortem prompt and renderer shaping, tenant-scoped org-memory helpers, and regression coverage that keeps explicit user commands above stored defaults."
+    },
+    {
+      "id": "GRW-002",
+      "title": "Add canonical knowledge gateway for approved org conventions and review policy",
+      "milestone": "M8",
+      "status": "done",
+      "priority": 22,
+      "depends_on": [
+        "MEM-002"
+      ],
+      "deliverables": [
+        "Canonical convention document schema",
+        "Approved convention loader",
+        "Knowledge-base integration for canonical org policy",
+        "Gateway precedence regression tests"
+      ],
+      "acceptance_checks": [
+        "Org review defaults and postmortem style can be sourced from approved canonical docs instead of only mutable org memory payloads.",
+        "Canonical conventions take precedence over ad-hoc org memory while explicit user commands still win at runtime.",
+        "The gateway remains tenant-scoped, auditable, and does not let chat transcripts silently rewrite canonical policy."
+      ],
+      "notes": "Completed with a tenant-scoped canonical convention service under the knowledge layer, runtime precedence of canonical docs over mutable org memory, shared KnowledgeBase integration for canonical policy docs, and postmortem style snapshots that keep approval-time write-back stable."
+    },
+    {
+      "id": "GRW-003",
+      "title": "Add approval-backed convention promotion into the canonical gateway",
+      "milestone": "M9",
+      "status": "done",
+      "priority": 23,
+      "depends_on": [
+        "GRW-002"
+      ],
+      "deliverables": [
+        "Canonical convention promotion contract",
+        "Approval-backed promotion command flow",
+        "Versioned canonical doc writer",
+        "Promotion and rollback regression tests"
+      ],
+      "acceptance_checks": [
+        "Approved conventions can be promoted into tenant-scoped canonical docs only through explicit approval.",
+        "Canonical promotion writes versioned artifacts and audit entries instead of silently mutating runtime memory.",
+        "New runtime requests can use promoted canonical docs while previously created pending actions remain stable through snapshots."
+      ],
+      "notes": "Completed with a promotion request contract, a new convention promotion service, explicit Feishu promotion commands that create pending approval actions, versioned canonical doc writes, candidate activation on successful promotion, and regression coverage for proposal, approval, and version retention."
+    },
+    {
+      "id": "CR-003",
+      "title": "Add GitHub-side review outcome ingestion and richer adoption signals",
+      "milestone": "M10",
+      "status": "done",
+      "priority": 24,
+      "depends_on": [
+        "GRW-003"
+      ],
+      "deliverables": [
+        "GitHub review outcome ingest contract",
+        "Publish-result reconciliation",
+        "Review adoption signal enrichment",
+        "Outcome-to-growth regression tests"
+      ],
+      "acceptance_checks": [
+        "Published review comments can be reconciled with GitHub-side outcome signals instead of relying only on in-thread explicit feedback.",
+        "The growth kernel can distinguish published, accepted, ignored, and unresolved review outcomes with explicit source attribution.",
+        "Repo-side outcome ingestion remains approval-safe, tenant-scoped, and does not infer acceptance from silence."
+      ],
+      "notes": "Completed with durable GitHub publish anchors in review state and pending actions, a manual same-thread repo-side outcome sync command, explicit published/accepted/ignored/unresolved outcome signals with source attribution, and growth-kernel coverage that now accepts GitHub comment outcomes without inferring acceptance from silence."
+    },
+    {
+      "id": "ARC-002",
+      "title": "Restructure service packages for incident and growth workflows",
+      "milestone": "M11",
+      "status": "done",
+      "priority": 25,
+      "depends_on": [
+        "CR-003"
+      ],
+      "deliverables": [
+        "Incident service package",
+        "Growth service package",
+        "Updated imports and docs",
+        "Full regression verification"
+      ],
+      "acceptance_checks": [
+        "Incident orchestration files live under a dedicated package instead of staying flat in app/services.",
+        "Growth-specific services live under a dedicated package instead of staying flat in app/services.",
+        "Full regression tests still pass after the package reorganization."
+      ],
+      "notes": "Completed by moving incident-domain orchestration into app/services/incident, growth-domain orchestration into app/services/growth, updating imports across app and tests, and fixing prompt-path defaults so the reorganization remains runtime-safe."
     }
   ]
 }

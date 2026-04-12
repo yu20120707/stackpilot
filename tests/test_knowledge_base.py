@@ -1,7 +1,15 @@
+import json
 from datetime import datetime, timezone
 from pathlib import Path
+import shutil
 
-from app.models.contracts import AnalysisRequest, ThreadMessage, TriggerCommand
+from app.models.contracts import (
+    AnalysisRequest,
+    CanonicalPolicyScope,
+    ThreadMessage,
+    TriggerCommand,
+)
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.knowledge_base import KnowledgeBase
 
 
@@ -63,6 +71,48 @@ def test_knowledge_base_retrieves_relevant_citations() -> None:
     assert any("5xx spike" in citation.snippet.lower() for citation in citations)
 
 
+def test_knowledge_base_prefers_release_notes_for_release_queries() -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_base = KnowledgeBase(fixtures_dir, max_hits=2)
+    request = build_analysis_request(
+        "payment service 5xx spike after deploy",
+        "please confirm release, rollback status, and inspect logs",
+    )
+
+    citations = knowledge_base.retrieve_citations(request)
+
+    assert citations
+    assert citations[0].label == "Payment Release 2026-04-10"
+
+
+def test_knowledge_base_prefers_auth_runbook_for_auth_queries() -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_base = KnowledgeBase(fixtures_dir, max_hits=2)
+    request = build_analysis_request(
+        "login failures are rising after token refresh",
+        "please confirm auth status and token expiry handling",
+    )
+
+    citations = knowledge_base.retrieve_citations(request)
+
+    assert citations
+    assert citations[0].label == "Auth Runbook"
+
+
+def test_knowledge_base_uses_second_pass_for_release_note_recall() -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_base = KnowledgeBase(fixtures_dir, max_hits=2)
+    request = build_analysis_request(
+        "payment 发布后异常",
+        "请确认这次发布相关变更",
+    )
+
+    citations = knowledge_base.retrieve_citations(request)
+
+    assert citations
+    assert citations[0].label == "Payment Release 2026-04-10"
+
+
 def test_knowledge_base_returns_empty_when_directory_is_missing(tmp_path: Path) -> None:
     knowledge_base = KnowledgeBase(tmp_path / "missing")
     request = build_analysis_request("payment service is failing")
@@ -112,3 +162,66 @@ def test_knowledge_base_skips_unreadable_files(monkeypatch, tmp_path: Path) -> N
 
     assert len(metadata) == 1
     assert metadata[0].doc_id == "payment"
+
+
+def test_knowledge_base_filters_weak_evidence_hits(tmp_path: Path) -> None:
+    docs_dir = tmp_path / "knowledge"
+    docs_dir.mkdir()
+    (docs_dir / "payment.md").write_text(
+        "# Payment Notes\npayment issue notes",
+        encoding="utf-8",
+    )
+    knowledge_base = KnowledgeBase(docs_dir)
+    request = build_analysis_request("payment looks odd", "please help")
+
+    citations = knowledge_base.retrieve_citations(request)
+
+    assert citations == []
+
+
+def test_knowledge_base_includes_tenant_canonical_policy_documents_in_scoped_metadata(
+    tmp_path: Path,
+) -> None:
+    fixtures_dir = Path(__file__).parent / "fixtures" / "knowledge"
+    knowledge_dir = tmp_path / "knowledge"
+    shutil.copytree(fixtures_dir, knowledge_dir)
+    tenant_dir = knowledge_dir / "canonical" / "oc_xxx"
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    (tenant_dir / "team-defaults.canonical.json").write_text(
+        json.dumps(
+            {
+                "convention_id": "team-defaults",
+                "title": "Team Defaults",
+                "status": "approved",
+                "policy_documents": [
+                    {
+                        "doc_id": "incident-approved-policy",
+                        "title": "Approved Incident Policy",
+                        "content": "Use the approved tenant incident policy before generic docs.",
+                        "scope": "incident",
+                        "tags": ["policy", "incident"],
+                    }
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    knowledge_base = KnowledgeBase(
+        knowledge_dir,
+        canonical_convention_service=CanonicalConventionService(knowledge_dir),
+    )
+
+    tenant_metadata = knowledge_base.list_metadata(
+        tenant_id="oc_xxx",
+        use_case=CanonicalPolicyScope.INCIDENT,
+    )
+    other_tenant_metadata = knowledge_base.list_metadata(
+        tenant_id="oc_other",
+        use_case=CanonicalPolicyScope.INCIDENT,
+    )
+
+    assert any(item.doc_id == "incident-approved-policy" for item in tenant_metadata)
+    assert not any(item.doc_id == "incident-approved-policy" for item in other_tenant_metadata)

@@ -7,13 +7,27 @@ from app.models.contracts import (
     AnalysisRequest,
     AnalysisResultRecord,
     AnalysisResultStatus,
+    CodeReviewDraft,
+    ReviewMemoryState,
+    CodeReviewRequest,
     ConfidenceLevel,
+    DiffFileChange,
+    DiffHunk,
     ExternalTaskSyncRequest,
     ExternalTaskTarget,
     ExternalTaskDraft,
     PostmortemDraft,
     PostmortemStatus,
     PostmortemTimelineEntry,
+    ReviewRiskLevel,
+    ReviewFeedbackStatus,
+    ReviewFocusArea,
+    ReviewOutcomeIngestResult,
+    ReviewOutcomeSignal,
+    ReviewOutcomeSource,
+    ReviewOutcomeStatus,
+    ReviewPublishResult,
+    ReviewSourceType,
     StructuredSummary,
     TodoDraftItem,
     ThreadMessage,
@@ -142,3 +156,113 @@ def test_postmortem_draft_accepts_reviewable_shape() -> None:
 
     assert draft.status is PostmortemStatus.DRAFT
     assert draft.timeline[0].event.startswith("Alerting")
+
+
+def test_code_review_request_accepts_normalized_diff_shape() -> None:
+    request = CodeReviewRequest(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        chat_id="oc_xxx",
+        thread_id="omt_xxx",
+        trigger_message_id="om_xxx",
+        user_id="ou_xxx",
+        source_type=ReviewSourceType.PATCH_TEXT,
+        source_ref="inline_patch",
+        raw_input="diff --git a/app/services/tickets.py b/app/services/tickets.py",
+        normalized_patch="diff --git a/app/services/tickets.py b/app/services/tickets.py",
+        files=[
+            DiffFileChange(
+                file_path="app/services/tickets.py",
+                change_type="modified",
+                additions=2,
+                deletions=0,
+                hunks=[
+                    DiffHunk(
+                        header="@@ -10,2 +10,4 @@",
+                        snippet="+ title = payload.get('title').strip()",
+                    )
+                ],
+            )
+        ],
+        source_message_text="@stackpilot 审一下这个 diff",
+    )
+
+    assert request.trigger_command is TriggerCommand.REVIEW_CODE
+    assert request.files[0].file_path == "app/services/tickets.py"
+
+
+def test_code_review_draft_accepts_structured_findings() -> None:
+    draft = CodeReviewDraft(
+        status="success",
+        overall_assessment="One input-validation path still looks unsafe.",
+        overall_risk=ReviewRiskLevel.MEDIUM,
+        focus_areas=[ReviewFocusArea.BUG_RISK],
+        findings=[],
+        missing_context=["No related tests in the diff."],
+        publish_recommendation="Keep as draft before publishing.",
+    )
+
+    assert draft.status.value == "success"
+    assert draft.overall_risk is ReviewRiskLevel.MEDIUM
+
+
+def test_review_memory_state_accepts_feedback_ready_findings() -> None:
+    state = ReviewMemoryState(
+        source_type=ReviewSourceType.GITHUB_PR,
+        source_ref="https://github.com/openai/demo/pull/12",
+        last_review_message_id="om_review_reply",
+        last_review_status="success",
+        focus_areas=[ReviewFocusArea.SECURITY],
+        findings=[
+            {
+                "finding_id": "F1",
+                "title": "Missing auth check",
+                "severity": "high",
+                "summary": "The new route bypasses the existing auth guard.",
+                "file_path": "app/api/routes.py",
+                "focus_areas": ["security"],
+                "feedback_status": ReviewFeedbackStatus.ACCEPTED,
+                "outcome_status": ReviewOutcomeStatus.ACCEPTED,
+                "outcome_source": ReviewOutcomeSource.FEISHU_FEEDBACK,
+                "evidence": [],
+            }
+        ],
+        published_review_ref="https://github.com/openai/demo/pull/12#issuecomment-1",
+        published_review_comment_id=101,
+        updated_at=datetime.now(timezone.utc),
+    )
+
+    assert state.findings[0].feedback_status is ReviewFeedbackStatus.ACCEPTED
+    assert state.findings[0].outcome_status is ReviewOutcomeStatus.ACCEPTED
+    assert state.published_review_comment_id == 101
+
+
+def test_review_outcome_ingest_result_accepts_signal_list() -> None:
+    result = ReviewOutcomeIngestResult(
+        source_ref="https://github.com/openai/demo/pull/12",
+        published_ref="https://github.com/openai/demo/pull/12#issuecomment-1",
+        scanned_comment_count=2,
+        signals=[
+            ReviewOutcomeSignal(
+                finding_id="F1",
+                status=ReviewOutcomeStatus.ACCEPTED,
+                source=ReviewOutcomeSource.GITHUB_COMMENT,
+                source_ref="https://github.com/openai/demo/pull/12#issuecomment-2",
+                observed_at=datetime.now(timezone.utc),
+            )
+        ],
+        message="github_review_outcomes_synced",
+    )
+
+    assert result.signals[0].status is ReviewOutcomeStatus.ACCEPTED
+
+
+def test_review_publish_result_accepts_comment_anchor() -> None:
+    result = ReviewPublishResult(
+        status="published",
+        source_ref="https://github.com/openai/demo/pull/12",
+        message="github_review_published",
+        published_ref="https://github.com/openai/demo/pull/12#issuecomment-1",
+        published_comment_id=101,
+    )
+
+    assert result.published_comment_id == 101

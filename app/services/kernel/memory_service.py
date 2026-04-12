@@ -10,6 +10,7 @@ from app.models.contracts import (
     MemoryScope,
     MemorySnapshot,
     NormalizedFeishuMessageEvent,
+    ReviewMemoryState,
     ThreadMemoryState,
 )
 
@@ -34,6 +35,24 @@ class MemoryService:
             thread_memory=self.load_thread_state(scope),
         )
 
+    def load_user_memory(self, scope: MemoryScope) -> dict[str, object]:
+        return self._load_json_mapping(self._user_memory_path(scope))
+
+    def save_user_memory(self, scope: MemoryScope, payload: dict[str, object]) -> None:
+        self._save_json_mapping(self._user_memory_path(scope), payload)
+
+    def load_org_memory(self, scope: MemoryScope) -> dict[str, object]:
+        return self._load_json_mapping(self._org_memory_path(scope))
+
+    def save_org_memory(self, scope: MemoryScope, payload: dict[str, object]) -> None:
+        self._save_json_mapping(self._org_memory_path(scope), payload)
+
+    def load_org_memory_for_tenant(self, tenant_id: str) -> dict[str, object]:
+        return self._load_json_mapping(self.base_dir / tenant_id / "org.json")
+
+    def save_org_memory_for_tenant(self, tenant_id: str, payload: dict[str, object]) -> None:
+        self._save_json_mapping(self.base_dir / tenant_id / "org.json", payload)
+
     def load_thread_state(self, scope: MemoryScope) -> ThreadMemoryState | None:
         path = self._thread_state_path(scope)
         payload = self._load_json_mapping(path)
@@ -47,23 +66,37 @@ class MemoryService:
             return None
 
     def save_thread_state(self, scope: MemoryScope, state: ThreadMemoryState) -> None:
-        path = self._thread_state_path(scope)
-        path.parent.mkdir(parents=True, exist_ok=True)
-
-        temp_path = path.with_suffix(path.suffix + ".tmp")
-        serialized = json.dumps(
+        self._save_json_mapping(
+            self._thread_state_path(scope),
             state.model_dump(mode="json", exclude_none=True),
-            ensure_ascii=False,
-            indent=2,
         )
-        temp_path.write_text(serialized, encoding="utf-8")
-        temp_path.replace(path)
+
+    def load_review_state(self, scope: MemoryScope) -> ReviewMemoryState | None:
+        path = self._review_state_path(scope)
+        payload = self._load_json_mapping(path)
+        if not payload:
+            return None
+
+        try:
+            return ReviewMemoryState.model_validate(payload)
+        except ValidationError:
+            logger.warning("Ignoring invalid review memory state at %s.", path)
+            return None
+
+    def save_review_state(self, scope: MemoryScope, state: ReviewMemoryState) -> None:
+        self._save_json_mapping(
+            self._review_state_path(scope),
+            state.model_dump(mode="json", exclude_none=True),
+        )
 
     def _tenant_dir(self, scope: MemoryScope) -> Path:
         return self.base_dir / scope.tenant_id
 
     def _thread_state_path(self, scope: MemoryScope) -> Path:
         return self._tenant_dir(scope) / "threads" / f"{scope.thread_id}.json"
+
+    def _review_state_path(self, scope: MemoryScope) -> Path:
+        return self._tenant_dir(scope) / "reviews" / f"{scope.thread_id}.json"
 
     def _user_memory_path(self, scope: MemoryScope) -> Path:
         return self._tenant_dir(scope) / "users" / f"{scope.user_id}.json"
@@ -86,3 +119,14 @@ class MemoryService:
             return {}
 
         return payload
+
+    def _save_json_mapping(self, path: Path, payload: dict[str, object]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = path.with_suffix(path.suffix + ".tmp")
+        serialized = json.dumps(
+            payload,
+            ensure_ascii=False,
+            indent=2,
+        )
+        temp_path.write_text(serialized, encoding="utf-8")
+        temp_path.replace(path)

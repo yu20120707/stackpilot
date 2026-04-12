@@ -45,6 +45,11 @@ Supported `trigger_command` values in P0:
 - `analyze_incident`
 - `summarize_thread`
 - `rerun_analysis`
+- `review_code`
+- `review_feedback`
+- `sync_review_outcome`
+- `promote_canonical`
+- `approve_action`
 
 ## 2.1 Follow-Up Context
 
@@ -234,6 +239,14 @@ Minimum successful reply layout:
 - ...
 ```
 
+When approval-backed actions are available, the reply may append:
+
+```text
+待审批动作：
+- [A1] ...
+  批准命令：批准动作 A1
+```
+
 Minimum failure reply layout:
 
 ```text
@@ -340,6 +353,382 @@ Field rules:
 - `updated_at`: required ISO-8601 string
 - `known_facts`: required array of strings
 - `open_questions`: required array of strings
+
+## 10.2 Pending Action Models
+
+The implemented foundation now includes a thread-scoped pending action queue.
+
+Pending action example:
+
+```json
+{
+  "action_id": "A1",
+  "action_type": "task_sync",
+  "status": "pending_approval",
+  "title": "同步待办草稿",
+  "preview": "将同步 3 个待办草稿。预览：补充错误日志；确认最近一次发布内容；等 3 项",
+  "source_thread_id": "omt_xxx",
+  "created_by": "ou_xxx",
+  "created_at": "2026-04-11T15:00:00+08:00",
+  "updated_at": "2026-04-11T15:00:00+08:00",
+  "task_sync_request": {
+    "target": "generic",
+    "source_thread_id": "omt_xxx",
+    "requested_by": "ou_xxx",
+    "task_drafts": [
+      {
+        "title": "补充错误日志",
+        "description": "Source thread: omt_xxx\nTask draft: 补充错误日志",
+        "labels": [
+          "incident-draft"
+        ],
+        "citations": []
+      }
+    ],
+    "require_confirmation": true,
+    "confirmed": false
+  }
+}
+```
+
+Field rules:
+
+- `action_id`: required thread-local identifier such as `A1`
+- `action_type`: required enum: `task_sync` or `postmortem_draft`
+- `status`: required enum: `pending_approval`, `executed`, `execution_failed`
+- `title`: required string
+- `preview`: required string shown before execution
+- `source_thread_id`: required thread id
+- `created_by`: required requester id
+- `created_at`: required ISO-8601 string
+- `updated_at`: required ISO-8601 string
+- `approved_by`: optional approver id
+- `approved_at`: optional ISO-8601 string
+- `execution_message`: optional execution result marker
+- `task_sync_request`: optional `ExternalTaskSyncRequest`
+- `postmortem_draft`: optional `PostmortemDraft`
+- `postmortem_style_snapshot`: optional resolved style snapshot used to keep later postmortem write-back stable even if mutable org memory changes
+- `canonical_promotion_request`: optional proposal snapshot used to promote an approved skill candidate into a versioned canonical doc after explicit approval
+
+## 10.3 Growth Evidence Models
+
+The implemented foundation now includes append-only interaction evidence and draft skill candidates.
+
+Interaction record example:
+
+```json
+{
+  "event_id": "om_xxx-analysis",
+  "correlation_key": "analysis_reply_sent:om_xxx:om_reply_live",
+  "event_type": "analysis_reply_sent",
+  "tenant_id": "oc_xxx",
+  "thread_id": "omt_xxx",
+  "actor_id": "ou_xxx",
+  "occurred_at": "2026-04-11T16:00:00+08:00",
+  "trigger_command": "summarize_thread",
+  "summary_status": "success",
+  "payload": {
+    "headline": "当前更像是一次发布后导致的支付服务异常。",
+    "pending_action_refs": [
+      {
+        "action_id": "A1",
+        "action_type": "task_sync",
+        "status": "pending_approval"
+      }
+    ]
+  }
+}
+```
+
+Field rules:
+
+- `event_id`: required unique event id
+- `correlation_key`: required dedupe key for repeated deliveries
+- `event_type`: required enum: `analysis_reply_sent`, `review_draft_sent`, `review_feedback_recorded`, `review_outcome_recorded`, `actions_proposed`, `action_executed`, `reply_send_failed`
+- `tenant_id`: required tenant/chat id
+- `thread_id`: required thread id
+- `actor_id`: required actor id
+- `occurred_at`: required ISO-8601 string
+- `trigger_command`: optional trigger enum
+- `summary_status`: optional result-status enum
+- `action_id`: optional action id
+- `action_type`: optional action-type enum
+- `pattern_key`: optional skill-mining pattern key
+- `payload`: required object
+
+Skill candidate example:
+
+```json
+{
+  "candidate_id": "skill-incident-task-sync-approval",
+  "tenant_id": "oc_xxx",
+  "name": "incident-task-sync-approval-loop",
+  "workflow": "incident",
+  "status": "draft",
+  "source_pattern_key": "incident/task_sync/approval_loop",
+  "trigger_conditions": [
+    "A summarize-thread run produced pending task-sync actions."
+  ],
+  "steps": [
+    "Persist the task-sync action in the thread action queue.",
+    "Wait for an explicit approval command."
+  ],
+  "verification_steps": [
+    "The action status becomes executed in the queue."
+  ],
+  "failure_signals": [
+    "external_task_sync_failed"
+  ],
+  "evidence_event_ids": [
+    "evt-1",
+    "evt-2"
+  ],
+  "created_at": "2026-04-11T16:05:00+08:00",
+  "updated_at": "2026-04-11T16:05:00+08:00"
+}
+```
+
+Field rules:
+
+- `candidate_id`: required candidate identifier
+- `tenant_id`: required tenant id
+- `name`: required display name
+- `workflow`: required workflow label
+- `status`: required enum: `draft`, `approved`, `active`, `retired`
+- `source_pattern_key`: required mined pattern key
+- `trigger_conditions`: required array of strings
+- `steps`: required array of strings
+- `verification_steps`: required array of strings
+- `failure_signals`: required array of strings
+- `evidence_event_ids`: required array of event ids
+- `approved_by`, `approved_at`: optional approval metadata
+- `activated_by`, `activated_at`: optional activation metadata
+
+## 10.4 AI Code Review Models
+
+The implemented foundation now includes a manual AI code review workflow.
+
+Review request example:
+
+```json
+{
+  "trigger_command": "review_code",
+  "chat_id": "oc_xxx",
+  "thread_id": "omt_review",
+  "trigger_message_id": "om_review_1",
+  "user_id": "ou_xxx",
+  "source_type": "github_pr",
+  "source_ref": "https://github.com/openai/demo/pull/12",
+  "raw_input": "@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12",
+  "normalized_patch": "diff --git a/app/services/tickets.py b/app/services/tickets.py ...",
+  "files": [
+    {
+      "file_path": "app/services/tickets.py",
+      "change_type": "modified",
+      "additions": 2,
+      "deletions": 1,
+      "hunks": [
+        {
+          "header": "@@ -10,2 +10,4 @@",
+          "snippet": "+title = payload.get(\"title\").strip()"
+        }
+      ]
+    }
+  ],
+  "policy_citations": [],
+  "source_message_text": "@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12"
+}
+```
+
+Review draft example:
+
+```json
+{
+  "status": "success",
+  "overall_assessment": "The diff is mostly safe, but one new path can fail on malformed input before validation.",
+  "overall_risk": "medium",
+  "findings": [
+    {
+      "title": "Missing null-safe title normalization",
+      "severity": "medium",
+      "summary": "The new branch calls strip() before validating that title is a string.",
+      "file_path": "app/services/tickets.py",
+      "line_start": 12,
+      "line_end": 14,
+      "evidence": [
+        {
+          "evidence_type": "diff_hunk",
+          "label": "app/services/tickets.py @@ -10,2 +10,4 @@",
+          "source_uri": "https://github.com/openai/demo/pull/12#app/services/tickets.py",
+          "snippet": "+title = payload.get(\"title\").strip()"
+        }
+      ]
+    }
+  ],
+  "missing_context": [
+    "The related validation tests were not included in the diff."
+  ],
+  "publish_recommendation": "请先保留为草稿并确认上游是否已经保证 title 一定为字符串。"
+}
+```
+
+Field rules:
+
+- `source_type`: required enum: `github_pr`, `patch_text`
+- `normalized_patch`: required non-empty patch text, or a controlled placeholder when remote patch fetch failed
+- `files`: required normalized file list, may be empty only when the review degrades to insufficient-context
+- `overall_risk`: required enum: `low`, `medium`, `high`
+- `findings`: required array; an empty array is valid when no high-confidence issue is visible
+- `finding_id`: runtime-assigned stable id such as `F1`, used for explicit feedback commands in the same thread
+- `focus_areas`: request-resolved focus labels such as `bug_risk`, `test_gap`, or `security`
+- `feedback_status`: optional enum: `accepted`, `ignored`, only present after an explicit user feedback command
+- `outcome_status`: optional enum: `published`, `accepted`, `ignored`, `unresolved`
+- `outcome_source`: optional enum: `feishu_feedback`, `github_publish`, `github_comment`, `github_sync`
+- `outcome_source_ref`: optional string pointing to the Feishu thread or GitHub comment URL that produced the latest outcome
+- `evidence`: optional per-finding evidence refs, but runtime should try to attach diff-hunk evidence whenever a file-scoped finding exists
+- GitHub publication remains approval-gated and is stored as a pending `review_publish` action in the shared action queue
+- review memory may also persist `published_review_ref`, `published_review_comment_id`, `published_at`, and `last_outcome_sync_at` once the draft has been published or synced
+
+## 10.5 Org Convention Memory Models
+
+The implemented foundation now includes tenant-scoped org convention memory that can shape review defaults and postmortem output.
+
+Org memory example:
+
+```json
+{
+  "review_defaults": {
+    "default_focus_areas": [
+      "security"
+    ]
+  },
+  "postmortem_style": {
+    "template_name": "enterprise-standard",
+    "title_prefix": "[SEV-2]",
+    "follow_up_prefix": "团队跟进：",
+    "section_labels": {
+      "incident_summary": "背景摘要：",
+      "follow_up_actions": "团队后续动作："
+    }
+  }
+}
+```
+
+Field rules:
+
+- `review_defaults.default_focus_areas`: optional array of review-focus enums such as `bug_risk`, `test_gap`, or `security`
+- `postmortem_style.template_name`: optional style label for traceability
+- `postmortem_style.title_prefix`: optional string prepended to generated postmortem titles
+- `postmortem_style.follow_up_prefix`: optional string prepended to generated follow-up actions
+- `postmortem_style.section_labels`: optional mapping used to rename rendered postmortem section headers
+
+Runtime precedence rules:
+
+- explicit review focus in the current request wins
+- user preference memory is consulted next
+- approved canonical review defaults are consulted after user memory
+- mutable org review defaults are consulted after canonical defaults
+- hardcoded safe defaults remain the final fallback
+
+Constraint:
+
+- org memory may shape output and defaults, but it does not silently rewrite canonical team policy documents
+
+## 10.6 Canonical Convention Document Model
+
+Approved canonical convention docs now live under `data/knowledge/canonical/<tenant>/*.canonical.json`.
+
+Example:
+
+```json
+{
+  "schema_version": 1,
+  "convention_id": "team-review",
+  "title": "Team Review Defaults",
+  "status": "approved",
+  "review_defaults": {
+    "default_focus_areas": [
+      "security"
+    ]
+  },
+  "postmortem_style": {
+    "title_prefix": "[SEV-2]"
+  },
+  "policy_documents": [
+    {
+      "doc_id": "review-security-policy",
+      "title": "Approved Security Review Policy",
+      "content": "Always inspect auth, permission, and input-validation changes first.",
+      "scope": "review",
+      "source_uri": "canonical://oc_xxx/team-review/review-security-policy",
+      "tags": [
+        "policy",
+        "review",
+        "security"
+      ]
+    }
+  ]
+}
+```
+
+Field rules:
+
+- `status`: only `approved` docs participate in runtime convention resolution or policy retrieval
+- `review_defaults`: optional structured review focus defaults
+- `postmortem_style`: optional structured postmortem style overlay
+- `policy_documents`: optional tenant-scoped knowledge documents surfaced through the shared knowledge gateway
+- `scope`: one of `incident`, `review`, or `shared`
+
+Constraint:
+
+- canonical convention docs are tenant-scoped and reusable across workflows, but they are still loaded read-only at runtime
+
+## 10.7 Canonical Convention Promotion Request
+
+Promotion actions now snapshot the exact canonical document to be written after approval.
+
+Example:
+
+```json
+{
+  "candidate_id": "skill-review-security-focus",
+  "candidate_name": "review-security-focus-loop",
+  "workflow": "review",
+  "requested_by": "ou_xxx",
+  "target_convention_id": "skill-review-security-focus",
+  "target_version": 2,
+  "canonical_document": {
+    "schema_version": 1,
+    "convention_id": "skill-review-security-focus",
+    "version": 2,
+    "title": "review-security-focus-loop Canonical Convention",
+    "status": "approved",
+    "review_defaults": {
+      "default_focus_areas": [
+        "security"
+      ]
+    },
+    "policy_documents": [
+      {
+        "doc_id": "skill-review-security-focus-policy",
+        "title": "Approved review-security-focus-loop Policy",
+        "content": "Candidate: review-security-focus-loop\nWorkflow: review",
+        "scope": "review",
+        "source_uri": "canonical://oc_xxx/skill-review-security-focus/skill-review-security-focus-policy",
+        "tags": [
+          "policy",
+          "review",
+          "security"
+        ]
+      }
+    ]
+  }
+}
+```
+
+Constraint:
+
+- approval writes the exact snapshotted canonical document instead of regenerating it from the latest mutable candidate state
 
 ## 11. Null And Empty Rules
 

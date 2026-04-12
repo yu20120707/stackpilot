@@ -5,10 +5,24 @@
 The current implemented baseline already covers:
 
 - Feishu thread ingestion
+- explicit thread memory for same-thread continuity
+- deterministic planner-router-ranker evidence retrieval
 - source-aware incident analysis
 - follow-up summary output
 - task draft generation
 - postmortem draft generation
+- action proposal queue with approval commands
+- append-only evidence recording and draft skill candidates
+- AI code review from inline diff or GitHub PR input
+- approval-backed GitHub draft review publishing
+- durable GitHub publish anchors plus same-thread repo-side outcome sync
+- review focus routing with user preference memory
+- org-level review default focus shaping
+- team-style postmortem draft and rendering shaping
+- approved canonical convention gateway for tenant-scoped policy and style docs
+- approval-backed promotion from approved skill candidates into versioned canonical docs
+- explicit finding adoption signals and review-focus draft skill candidates
+- published, accepted, ignored, and unresolved review outcome signals with source attribution
 
 The next product direction is no longer just "summarize one thread". It is:
 
@@ -21,7 +35,7 @@ The next product direction is no longer just "summarize one thread". It is:
 Think of the repository in two layers:
 
 1. `Implemented foundation`
-   Feishu-first incident discussion analysis with structured replies and source citations.
+   Feishu-first incident discussion analysis plus manual AI code review, both with structured replies, source-aware evidence, approval-backed actions, tenant-scoped org conventions, approved canonical convention docs, and an approval-backed promotion path from approved skill candidates into versioned canonical docs.
 2. `Planned platform`
    A controlled workflow agent that supports incident handling and AI code review on top of shared memory, retrieval, approval, and audit capabilities.
 
@@ -63,7 +77,17 @@ The service starts on [http://127.0.0.1:8000](http://127.0.0.1:8000).
 - `app/models`: shared contracts
 - `app/prompts`: prompt templates
 - `app/services`: workflow orchestration services
+- `app/services/incident`: incident analysis, rendering, postmortem, task sync, and Feishu live-flow services
+- `app/services/growth`: skill registry, skill mining, and canonical convention promotion services
+- `app/services/kernel`: shared memory, org convention shaping, and future growth-kernel services
+- `app/services/review`: AI code review parsing, normalization, rendering, and publish services
+- `app/services/retrieval`: deterministic retrieval pipeline components
 - `data/knowledge`: local controlled knowledge sources
+- `data/knowledge/canonical`: approved tenant-scoped convention and policy docs
+- `data/actions`: local persisted pending-action queue
+- `data/records`: append-only workflow evidence and audit logs
+- `data/memory`: local persisted workflow memory
+- `data/skills`: draft skill candidates and lifecycle metadata
 - `tests`: smoke and contract coverage
 
 ## Scope Guardrails

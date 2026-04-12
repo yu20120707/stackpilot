@@ -14,7 +14,7 @@ from app.models.contracts import (
     ThreadMessage,
     TriggerCommand,
 )
-from app.services.analysis_service import AnalysisService
+from app.services.incident.analysis_service import AnalysisService
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "analysis"
@@ -105,6 +105,24 @@ async def test_analysis_service_returns_insufficient_context_without_llm_call(tm
     assert result.status == AnalysisResultStatus.INSUFFICIENT_CONTEXT
     assert result.confidence == ConfidenceLevel.LOW
     assert result.missing_information
+    assert llm_client.calls == []
+
+
+@pytest.mark.anyio
+async def test_analysis_service_keeps_insufficient_context_when_weak_evidence_is_filtered(
+    tmp_path: Path,
+) -> None:
+    prompt_path = tmp_path / "analysis_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    llm_client = FakeLLMClient(load_summary_fixture("structured_summary_success.json"))
+    service = AnalysisService(llm_client, prompt_path=prompt_path)
+
+    result = await service.summarize(
+        build_request("payment looks odd", "please help"),
+        citations=[],
+    )
+
+    assert result.status == AnalysisResultStatus.INSUFFICIENT_CONTEXT
     assert llm_client.calls == []
 
 

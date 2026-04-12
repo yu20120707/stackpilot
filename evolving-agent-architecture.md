@@ -39,11 +39,21 @@ Usage:
 - preserve workflow continuity
 - store stable preferences
 - remember approved patterns
+- shape org-level review defaults and postmortem structure
+- keep mutable org memory as a fallback rather than the highest-authority source
 
 Constraint:
 
 - memory supports decisions
 - memory does not rewrite canonical docs automatically
+
+Runtime precedence for convention-shaped behavior:
+
+- explicit request
+- user preference memory
+- approved canonical convention docs
+- org default memory
+- safe fallback
 
 ### 3.2 Retrieval Layer
 
@@ -59,6 +69,7 @@ Usage:
 - incident evidence lookup
 - review policy lookup
 - historical pattern reuse
+- approved canonical convention and policy lookup
 
 Constraint:
 
@@ -148,6 +159,14 @@ Primary loop:
 
 `submit diff/pr -> normalize review request -> retrieve policy/evidence -> generate findings -> approve -> publish -> record acceptance`
 
+Current MVP note:
+
+- the runtime entry remains Feishu-first
+- a workflow router dispatches explicit review triggers to a dedicated review flow
+- GitHub publication is draft-first and approval-gated
+- review focus can come from explicit request text, stored preference memory, approved canonical defaults, or tenant org defaults
+- accepted findings are recorded explicitly before they can influence draft skill mining
+
 Core user-visible outputs:
 
 - overall review assessment
@@ -197,20 +216,36 @@ The platform must not automatically:
 - review feedback reuse
 - cross-workflow approved skill reuse
 
+### Phase 5: Canonical Promotion
+
+- approval-backed convention promotion
+- versioned canonical doc writes
+- runtime reuse through approved-doc precedence
+- audit-backed rollback readiness
+
 ## 8. Module Direction
 
 Expected new services over time:
 
-- `app/services/memory_service.py`
-- `app/services/retrieval_planner.py`
-- `app/services/retrieval_router.py`
-- `app/services/evidence_ranker.py`
-- `app/services/interaction_recorder.py`
+- `app/services/kernel/memory_service.py`
+- `app/services/kernel/canonical_convention_service.py`
+- `app/services/kernel/org_convention_service.py`
+- `app/services/kernel/action_queue_service.py`
+- `app/services/kernel/audit_log_service.py`
+- `app/services/kernel/interaction_recorder.py`
+- `app/services/retrieval/planner.py`
+- `app/services/retrieval/router.py`
+- `app/services/retrieval/ranker.py`
+- `app/services/incident_action_service.py`
 - `app/services/skill_miner.py`
 - `app/services/skill_registry.py`
 - `app/services/approval_policy.py`
 - `app/services/action_queue.py`
-- `app/services/code_review_flow.py`
+- `app/services/workflow_router.py`
+- `app/services/review/flow.py`
+- `app/services/review/diff_reader.py`
+- `app/services/review/service.py`
+- `app/services/review/publish_service.py`
 
 ## 9. Final Product Definition
 

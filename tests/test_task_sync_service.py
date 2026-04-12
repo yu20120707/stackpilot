@@ -10,7 +10,7 @@ from app.models.contracts import (
     TaskSyncStatus,
     TodoDraftItem,
 )
-from app.services.task_sync_service import TaskSyncService
+from app.services.incident.task_sync_service import TaskSyncService
 
 
 def build_summary() -> StructuredSummary:

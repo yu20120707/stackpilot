@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
@@ -6,48 +5,36 @@ import re
 from app.core.logging import get_logger
 from app.models.contracts import (
     AnalysisRequest,
+    CanonicalPolicyScope,
     KnowledgeCitation,
     KnowledgeDocumentMetadata,
-    SourceType,
 )
+from app.services.kernel.canonical_convention_service import CanonicalConventionService
+from app.services.retrieval.models import LoadedKnowledgeDocument
+from app.services.retrieval.service import RetrievalService
 
 
 logger = get_logger(__name__)
 DOCUMENT_EXTENSIONS = {".md", ".txt"}
 STRUCTURED_BUNDLE_SUFFIX = ".knowledge.json"
-ASCII_TOKEN_PATTERN = re.compile(r"[a-z0-9_./-]{2,}")
-CJK_SEGMENT_PATTERN = re.compile(r"[\u4e00-\u9fff]{2,}")
-WHITESPACE_PATTERN = re.compile(r"\s+")
 MARKDOWN_HEADING_PATTERN = re.compile(r"^\s*#\s+(.+?)\s*$", re.MULTILINE)
-STOP_WORDS = {
-    "the",
-    "and",
-    "for",
-    "with",
-    "this",
-    "that",
-    "from",
-    "into",
-    "after",
-    "before",
-    "then",
-    "when",
-    "http",
-    "https",
-    "service",
-}
-
-
-@dataclass(slots=True)
-class LoadedKnowledgeDocument:
-    metadata: KnowledgeDocumentMetadata
-    content: str
 
 
 class KnowledgeBase:
-    def __init__(self, knowledge_dir: Path, max_hits: int = 5) -> None:
+    def __init__(
+        self,
+        knowledge_dir: Path,
+        max_hits: int = 5,
+        *,
+        canonical_convention_service: CanonicalConventionService | None = None,
+    ) -> None:
         self.knowledge_dir = knowledge_dir
         self.max_hits = max_hits
+        self.canonical_convention_service = canonical_convention_service
+        self.retrieval_service = RetrievalService(
+            document_loader=self.load_documents,
+            default_max_hits=max_hits,
+        )
 
     def list_documents(self) -> list[Path]:
         if not self.knowledge_dir.exists():
@@ -85,8 +72,35 @@ class KnowledgeBase:
 
         return documents
 
-    def list_metadata(self) -> list[KnowledgeDocumentMetadata]:
-        return [document.metadata for document in self.load_documents()]
+    def load_documents_for_tenant(
+        self,
+        tenant_id: str | None = None,
+        *,
+        use_case: CanonicalPolicyScope | None = None,
+    ) -> list[LoadedKnowledgeDocument]:
+        documents = self.load_documents()
+        if tenant_id and self.canonical_convention_service is not None:
+            documents.extend(
+                self.canonical_convention_service.load_policy_documents(
+                    tenant_id,
+                    use_case=use_case,
+                )
+            )
+        return documents
+
+    def list_metadata(
+        self,
+        tenant_id: str | None = None,
+        *,
+        use_case: CanonicalPolicyScope | None = None,
+    ) -> list[KnowledgeDocumentMetadata]:
+        return [
+            document.metadata
+            for document in self.load_documents_for_tenant(
+                tenant_id,
+                use_case=use_case,
+            )
+        ]
 
     def retrieve_citations(
         self,
@@ -94,36 +108,14 @@ class KnowledgeBase:
         *,
         max_hits: int | None = None,
     ) -> list[KnowledgeCitation]:
-        query_text = "\n".join(message.text for message in analysis_request.thread_messages)
-        query_terms = self._extract_terms(query_text)
-        if not query_terms:
-            return []
-
-        scored_documents: list[tuple[int, str, LoadedKnowledgeDocument]] = []
-        for document in self.load_documents():
-            score, best_term = self._score_document(document.content, query_terms)
-            if score <= 0:
-                continue
-            scored_documents.append((score, best_term, document))
-
-        scored_documents.sort(
-            key=lambda item: (-item[0], item[2].metadata.title.lower(), item[2].metadata.path)
+        return self.retrieval_service.retrieve(
+            analysis_request,
+            max_hits=max_hits,
+            documents=self.load_documents_for_tenant(
+                analysis_request.chat_id,
+                use_case=CanonicalPolicyScope.INCIDENT,
+            ),
         )
-
-        limit = max_hits or self.max_hits
-        citations: list[KnowledgeCitation] = []
-        for score, best_term, document in scored_documents[:limit]:
-            _ = score
-            citations.append(
-                KnowledgeCitation(
-                    source_type=SourceType.KNOWLEDGE_DOC,
-                    label=document.metadata.title,
-                    source_uri=document.metadata.path,
-                    snippet=self._build_snippet(document.content, best_term),
-                )
-            )
-
-        return citations
 
     def _is_supported_document(self, path: Path) -> bool:
         return path.suffix.lower() in DOCUMENT_EXTENSIONS or self._is_structured_bundle(path)
@@ -222,56 +214,3 @@ class KnowledgeBase:
 
     def _humanize_stem(self, stem: str) -> str:
         return stem.replace("-", " ").replace("_", " ").strip().title()
-
-    def _extract_terms(self, text: str) -> set[str]:
-        normalized = text.lower()
-        terms = {
-            token
-            for token in ASCII_TOKEN_PATTERN.findall(normalized)
-            if token not in STOP_WORDS
-        }
-
-        for segment in CJK_SEGMENT_PATTERN.findall(normalized):
-            terms.add(segment)
-            if len(segment) > 2:
-                for index in range(len(segment) - 1):
-                    terms.add(segment[index : index + 2])
-
-        return {term for term in terms if term.strip()}
-
-    def _score_document(self, content: str, query_terms: set[str]) -> tuple[int, str]:
-        normalized_content = content.lower()
-        matched_terms = [term for term in query_terms if term in normalized_content]
-        if not matched_terms:
-            return 0, ""
-
-        score = sum(min(len(term), 8) for term in matched_terms)
-        best_term = min(
-            matched_terms,
-            key=lambda term: (normalized_content.find(term), -len(term)),
-        )
-        return score, best_term
-
-    def _build_snippet(self, content: str, best_term: str) -> str:
-        squashed = WHITESPACE_PATTERN.sub(" ", content).strip()
-        if not squashed:
-            return ""
-
-        if not best_term:
-            return squashed[:160]
-
-        normalized_squashed = squashed.lower()
-        index = normalized_squashed.find(best_term.lower())
-        if index < 0:
-            return squashed[:160]
-
-        start = max(0, index - 40)
-        end = min(len(squashed), index + len(best_term) + 80)
-        snippet = squashed[start:end].strip()
-
-        if start > 0:
-            snippet = f"...{snippet}"
-        if end < len(squashed):
-            snippet = f"{snippet}..."
-
-        return snippet

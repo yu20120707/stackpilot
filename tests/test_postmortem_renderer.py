@@ -1,11 +1,12 @@
 from app.models.contracts import (
     KnowledgeCitation,
+    OrgPostmortemStyle,
     PostmortemDraft,
     PostmortemStatus,
     PostmortemTimelineEntry,
     SourceType,
 )
-from app.services.postmortem_renderer import PostmortemRenderer
+from app.services.incident.postmortem_renderer import PostmortemRenderer
 
 
 def test_postmortem_renderer_formats_reviewable_postmortem_draft() -> None:
@@ -47,3 +48,33 @@ def test_postmortem_renderer_formats_reviewable_postmortem_draft() -> None:
     assert "待确认问题：" in rendered
     assert "参考来源：" in rendered
     assert "Payment Release 2026-04-10" in rendered
+
+
+def test_postmortem_renderer_respects_org_style_section_labels() -> None:
+    renderer = PostmortemRenderer()
+    draft = PostmortemDraft(
+        status=PostmortemStatus.DRAFT,
+        title="[SEV-2] Payment release regression",
+        incident_summary="The discussion converged on a release-related payment incident that improved after rollback.",
+        impact_summary="Payment-related requests were affected during the incident window.",
+        timeline=[],
+        root_cause_hypothesis="Retry middleware regression.",
+        resolution_summary="Rollback stabilized the service.",
+        follow_up_actions=["团队跟进：Confirm final metrics."],
+        open_questions=["Exact user-impact window."],
+        citations=[],
+    )
+
+    rendered = renderer.render(
+        draft,
+        org_style=OrgPostmortemStyle(
+            template_name="enterprise-standard",
+            section_labels={
+                "incident_summary": "背景摘要：",
+                "follow_up_actions": "团队后续动作：",
+            },
+        ),
+    )
+
+    assert "背景摘要：" in rendered
+    assert "团队后续动作：" in rendered

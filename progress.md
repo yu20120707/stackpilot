@@ -2,11 +2,11 @@
 
 ## Current Snapshot
 
-- Date: 2026-04-11
-- Phase: `EVL-001` complete
-- Overall status: the codebase now has a working file-backed thread memory foundation on top of the incident-analysis baseline, plus aligned roadmap docs for the shared growth kernel and planned AI code review workflow
-- Recommended next task: `RET-001 Upgrade retrieval into planner-router-ranker pipeline`
-- Last known good state: runnable incident-analysis scaffold with explicit thread memory, follow-up summaries, task drafts, postmortem drafts, live Feishu orchestration wiring, and full passing regression coverage
+- Date: 2026-04-12
+- Phase: `ARC-002` complete
+- Overall status: the codebase now supports durable GitHub review publish anchors, same-thread repo-side outcome sync, and a cleaner service layout with dedicated `incident` and `growth` packages on top of the earlier kernel, retrieval, review, and canonical-convention foundations
+- Recommended next task: `No remaining planned task in task-board.json`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, canonical convention promotion, repo-side review outcome sync, clearer incident/growth package boundaries, workflow-router dispatching, and `120` passing regression tests
 
 ## Canonical Files
 
@@ -31,8 +31,16 @@
 - P0 implementation draft stack is `Python 3.11 + FastAPI + Pydantic`
 - the current implemented workflow remains explicit manual trigger in Feishu
 - the next roadmap adds controlled growth and AI code review without introducing autonomous source-code mutation
-- the current evidence layer still starts from local controlled knowledge documents
-- high-risk external actions remain approval-gated
+- AI code review now supports explicit PR-link or inline diff triggers and keeps external GitHub publication behind approval
+- Review focus can now come from explicit request text or repeated user preference memory, and accepted findings can be recorded explicitly from the same Feishu thread
+- Review focus resolution now follows `explicit request -> user memory -> approved canonical defaults -> mutable org defaults -> safe fallback`
+- Tenant org memory can now shape postmortem title, follow-up wording, and section labels without overriding explicit user intent
+- Approved canonical convention docs now override mutable org memory for org-level defaults and shared policy retrieval
+- Postmortem actions now snapshot the resolved style at creation time so later approval does not drift when mutable org memory changes
+- Users can now propose canonical promotion with a Feishu command, review it as a pending action, and approve a versioned canonical doc write from the same thread
+- the current evidence layer starts from local controlled knowledge documents and uses deterministic planner/router/ranker retrieval
+- high-risk external actions remain approval-gated through a thread-scoped pending action queue
+- skill candidates remain draft-only by default and do not participate in runtime routing yet
 
 ## Open Decisions
 
@@ -45,6 +53,8 @@
 - If implementation work equates "self-evolution" with autonomous code rewriting, the safety boundary will collapse.
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
+- GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
+- GitHub outcome sync currently depends on an explicit same-thread command and issue-comment parsing; richer signals such as review-thread resolution or webhook-backed ingest are not implemented yet.
 
 ## Handoff Rules
 
@@ -130,6 +140,452 @@ Required fields:
   - Approval-backed pending-action persistence is not implemented yet
 - Next recommended task:
   - `RET-001 Upgrade retrieval into planner-router-ranker pipeline`
+
+### Session 023
+
+- Date: 2026-04-11
+- Primary task: `RET-001`
+- Objective: replace the old keyword-hit retrieval path with a deterministic planner-router-ranker pipeline while preserving the existing knowledge-base and live-flow interfaces
+- Files changed:
+  - `README.md`
+  - `app/services/knowledge_base.py`
+  - `app/services/retrieval/__init__.py`
+  - `app/services/retrieval/models.py`
+  - `app/services/retrieval/planner.py`
+  - `app/services/retrieval/ranker.py`
+  - `app/services/retrieval/router.py`
+  - `app/services/retrieval/service.py`
+  - `app/services/retrieval/utils.py`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_analysis_service.py`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_knowledge_base.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_knowledge_base.py tests/test_feishu_live_flow.py tests/test_analysis_service.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `RET-001` complete
+  - Retrieval now uses a deterministic planner, document router, and evidence ranker behind the existing `KnowledgeBase` facade
+  - Release-related threads prefer release-note evidence, auth issues prefer runbooks, and weak hits no longer bypass insufficient-context behavior
+  - A single bounded second pass can recover route-specific evidence without introducing external retrieval infrastructure
+- Blockers:
+  - Incident actions are still draft-only outputs and are not yet persisted into an approval queue
+  - User/org memory, audit recording, and growth-kernel promotion flows remain unimplemented
+- Next recommended task:
+  - `ACT-001 Add action proposal queue and approval-backed incident actions`
+
+### Session 024
+
+- Date: 2026-04-11
+- Primary task: `ACT-001`
+- Objective: add a persisted thread-scoped action proposal queue plus explicit approval commands so task-sync and postmortem actions become reviewable and executable from the same Feishu thread
+- Files changed:
+  - `.env.example`
+  - `README.md`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/__init__.py`
+  - `app/services/kernel/action_queue_service.py`
+  - `data/actions/.gitkeep`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `schema.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_action_queue_service.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_incident_action_service.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_feishu_callback.py tests/test_action_queue_service.py tests/test_incident_action_service.py tests/test_feishu_live_flow.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `ACT-001` complete
+  - Summarize-thread success replies now create persisted task-sync and postmortem actions under a thread-scoped action queue
+  - Users can approve actions with explicit commands such as `批准动作 A1`, and the selected action executes and writes its result back to the same thread
+  - Reply-send failures now discard just-created pending actions so invisible action ids are not left behind
+- Blockers:
+  - The action queue is local file-backed state only and does not yet emit audit records or reusable skill candidates
+  - External task sync still depends on a configured downstream client; without one, approval returns a controlled failure result rather than a real external task
+- Next recommended task:
+  - `GRW-001 Add controlled growth kernel with recorder and skill candidates`
+
+### Session 025
+
+- Date: 2026-04-11
+- Primary task: `GRW-001`
+- Objective: add a controlled growth kernel with append-only workflow evidence, tenant audit logs, draft skill candidates, and lifecycle guards that keep skills out of runtime until explicit approval
+- Files changed:
+  - `.env.example`
+  - `README.md`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/__init__.py`
+  - `app/services/kernel/audit_log_service.py`
+  - `app/services/kernel/interaction_recorder.py`
+  - `app/services/skill_miner.py`
+  - `app/services/skill_registry.py`
+  - `data/records/.gitkeep`
+  - `data/skills/.gitkeep`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `schema.md`
+  - `tech-spec.md`
+  - `test-cases.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_interaction_recorder.py`
+  - `tests/test_skill_miner.py`
+  - `tests/test_skill_registry.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_interaction_recorder.py tests/test_skill_registry.py tests/test_skill_miner.py tests/test_incident_action_service.py tests/test_feishu_live_flow.py`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `GRW-001` complete
+  - Visible incident replies and approval results now append deduped thread-scoped evidence plus tenant audit entries
+  - Repeated successful approval-loop patterns now create draft skill candidates with generated `SKILL.md` files under `data/skills`
+  - Skill activation remains blocked until explicit approval through the registry lifecycle, so growth stays draft-only and auditable
+- Blockers:
+  - Draft skill candidates are not yet used to steer runtime behavior or prompt routing
+  - AI code review still has no diff ingestion, structured finding model, or publish flow
+- Next recommended task:
+  - `CR-001 Launch AI code review MVP on the shared growth kernel`
+
+### Session 026
+
+- Date: 2026-04-11
+- Primary task: `CR-001`
+- Objective: launch the first AI code review workflow on the shared kernel with manual PR or patch triggers, deterministic diff normalization, structured draft findings, and approval-backed GitHub draft publishing
+- Files changed:
+  - `app/api/feishu.py`
+  - `app/clients/github_review_client.py`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/prompts/code_review_prompt.md`
+  - `app/services/command_parser.py`
+  - `app/services/review/__init__.py`
+  - `app/services/review/diff_reader.py`
+  - `app/services/review/flow.py`
+  - `app/services/review/input_parser.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/review/publish_service.py`
+  - `app/services/review/renderer.py`
+  - `app/services/review/service.py`
+  - `app/services/workflow_router.py`
+  - `README.md`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `tech-spec.md`
+  - `task-board.json`
+  - `progress.md`
+  - `tests/fixtures/analysis/code_review_success.json`
+  - `tests/test_analysis_contracts.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_diff_reader.py`
+  - `tests/test_feishu_callback.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_analysis_contracts.py tests/test_diff_reader.py tests/test_feishu_callback.py tests/test_code_review_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `CR-001` complete
+  - The repository now supports explicit AI code review triggers from Feishu using either inline diff or GitHub PR input
+  - GitHub PR review attempts fetch the PR diff, normalize changed files and hunks, generate structured findings, and return a draft review in-thread
+  - External GitHub publication remains approval-gated through a thread-scoped pending action and the shared workflow router now dispatches incident, review, and approval commands cleanly
+- Blockers:
+  - Private GitHub repositories still require a configured `GITHUB_TOKEN` for diff fetch and draft comment publishing
+  - Review adoption recording, preference memory, and review-specific skill mining remain for the next milestone
+- Next recommended task:
+  - `CR-002 Grow review reuse safely with policy routing and adoption signals`
+
+### Session 027
+
+- Date: 2026-04-11
+- Primary task: `CR-002`
+- Objective: extend the AI code review workflow with safe reuse primitives including explicit review focus routing, user preference memory, finding adoption signals, and review-pattern draft skill candidates
+- Files changed:
+  - `README.md`
+  - `api-contracts.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/kernel/interaction_recorder.py`
+  - `app/services/kernel/memory_service.py`
+  - `app/services/review/flow.py`
+  - `app/services/review/preference_service.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/review/renderer.py`
+  - `app/services/review/service.py`
+  - `app/services/skill_miner.py`
+  - `app/services/workflow_router.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_analysis_contracts.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_interaction_recorder.py`
+  - `tests/test_skill_miner.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_feishu_callback.py tests/test_analysis_contracts.py tests/test_code_review_flow.py tests/test_interaction_recorder.py tests/test_skill_miner.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+  - `powershell -ExecutionPolicy Bypass -File .\\init.ps1`
+- Result:
+  - `CR-002` complete
+  - Code review now routes focus areas explicitly and can reuse repeated user focus preferences when the next request omits them
+  - Review findings now get stable ids, thread-scoped review memory, and explicit feedback commands such as `采纳建议 F1` or `忽略建议 F2`
+  - Accepted review findings now enter the growth kernel and can produce review-focus draft skill candidates without enabling runtime auto-fix or auto-activation
+- Blockers:
+  - Org-level convention memory still needs a stronger shaping layer for cross-workflow defaults and output formatting
+  - Review adoption is currently recorded from explicit Feishu feedback commands rather than from GitHub thread resolution signals
+- Next recommended task:
+  - `MEM-002 Expand org memory and team-style shaping across incident and review workflows`
+
+### Session 028
+
+- Date: 2026-04-11
+- Primary task: `MEM-002`
+- Objective: make tenant-scoped org memory shape runtime behavior safely by applying org-level review defaults and team-style postmortem conventions across the incident and review workflows
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/memory_service.py`
+  - `app/services/kernel/org_convention_service.py`
+  - `app/services/postmortem_renderer.py`
+  - `app/services/postmortem_service.py`
+  - `app/services/review/preference_service.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_org_convention_service.py`
+  - `tests/test_postmortem_renderer.py`
+  - `tests/test_postmortem_service.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_org_convention_service.py tests/test_postmortem_service.py tests/test_postmortem_renderer.py tests/test_incident_action_service.py tests/test_code_review_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `MEM-002` complete
+  - Org memory now drives review default focus and team-style postmortem shaping without overriding explicit user requests
+  - Incident postmortem drafts and rendered write-backs now honor tenant-scoped title, follow-up, and section-label conventions
+  - The shared kernel now has a dedicated org convention service instead of forcing each workflow to parse raw org memory payloads directly
+- Blockers:
+  - Approved canonical convention docs still do not exist, so mutable org memory remains the only runtime source for team defaults
+  - Review adoption still depends on explicit in-thread feedback rather than GitHub-side outcome signals
+- Next recommended task:
+  - `GRW-002 Add canonical knowledge gateway for approved org conventions and review policy`
+
+### Session 029
+
+- Date: 2026-04-11
+- Primary task: `GRW-002`
+- Objective: anchor approved org conventions under the shared knowledge layer so canonical policy/style docs can override mutable org memory safely across incident and review workflows
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/incident_action_service.py`
+  - `app/services/kernel/canonical_convention_service.py`
+  - `app/services/kernel/org_convention_service.py`
+  - `app/services/knowledge_base.py`
+  - `app/services/retrieval/service.py`
+  - `app/services/review/policy_service.py`
+  - `app/services/review/preference_service.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_canonical_convention_service.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_knowledge_base.py`
+  - `tests/test_org_convention_service.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_canonical_convention_service.py tests/test_org_convention_service.py tests/test_knowledge_base.py tests/test_code_review_flow.py tests/test_incident_action_service.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `GRW-002` complete
+  - Approved canonical convention docs now live under `data/knowledge/canonical/<tenant>/*.canonical.json` and can provide runtime review defaults plus scoped policy docs
+  - KnowledgeBase and review policy lookup now share the same tenant-scoped canonical policy source, and canonical docs override mutable org memory while explicit requests and user memory remain higher priority
+  - Incident postmortem actions now store a resolved style snapshot so approval-time write-back stays stable even if mutable org memory changes later
+- Blockers:
+  - Canonical convention docs are still authored manually; no approval-backed promotion path exists yet
+  - GitHub-side adoption signals still do not feed the growth kernel automatically
+- Next recommended task:
+  - `GRW-003 Add approval-backed convention promotion into the canonical gateway`
+
+### Session 030
+
+- Date: 2026-04-11
+- Primary task: `GRW-003`
+- Objective: connect approved skill candidates to the canonical gateway through an explicit proposal-and-approval flow that writes versioned canonical docs instead of requiring manual file authoring
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/convention_promotion_service.py`
+  - `app/services/feishu_live_flow.py`
+  - `app/services/kernel/canonical_convention_service.py`
+  - `app/services/skill_miner.py`
+  - `decision-log.md`
+  - `evolving-agent-architecture.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_command_parser.py`
+  - `tests/test_convention_promotion_service.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_feishu_live_flow.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_convention_promotion_service.py tests/test_command_parser.py tests/test_feishu_callback.py tests/test_feishu_live_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `GRW-003` complete
+  - Users can now issue `沉淀规范 skill-xxx` in Feishu, receive a pending promotion action, and approve a versioned canonical-doc write from the same thread
+  - Promotion writes a snapshotted canonical document instead of regenerating from mutable candidate state at approval time, and successful promotion activates the approved skill candidate
+  - Versioned canonical doc retention means older versions remain on disk for manual rollback readiness while audit logs capture promotion events
+- Blockers:
+  - GitHub-side review outcomes still are not ingested, so adoption quality depends on publish events and explicit Feishu feedback
+  - Promotion currently targets approved skill candidates only; it does not yet support a richer diff-review workflow for canonical doc updates
+- Next recommended task:
+  - `CR-003 Add GitHub-side review outcome ingestion and richer adoption signals`
+
+### Session 031
+
+- Date: 2026-04-12
+- Primary task: `CR-003`
+- Objective: add approval-safe GitHub-side review outcome ingestion so published review comments can be reconciled with repo-side signals and fed back into the growth kernel with explicit source attribution
+- Files changed:
+  - `README.md`
+  - `api-contracts.md`
+  - `app/clients/github_review_client.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/kernel/interaction_recorder.py`
+  - `app/services/review/flow.py`
+  - `app/services/review/outcome_service.py`
+  - `app/services/review/publish_service.py`
+  - `app/services/skill_miner.py`
+  - `app/services/workflow_router.py`
+  - `decision-log.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_analysis_contracts.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_interaction_recorder.py`
+  - `tests/test_skill_miner.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_feishu_callback.py tests/test_analysis_contracts.py tests/test_interaction_recorder.py tests/test_skill_miner.py tests/test_code_review_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+  - `powershell -ExecutionPolicy Bypass -File .\\init.ps1`
+- Result:
+  - `CR-003` complete
+  - Review publish now persists GitHub comment anchors into both the pending action and thread-scoped review memory, including comment id, URL, and published timestamp
+  - Users can now issue `同步 review 结果` from the same Feishu thread to ingest explicit GitHub-side outcome comments without introducing automatic polling or weakening the approval boundary
+  - The growth kernel now records source-attributed `published`, `accepted`, `ignored`, and `unresolved` review signals, and accepted GitHub comment outcomes can contribute to review skill-candidate mining without inferring acceptance from silence
+- Blockers:
+  - GitHub outcome ingest currently reads issue comments only; it does not yet parse review-thread resolution, reactions, or webhook-driven repo events
+  - Review outcome sync still requires the same Feishu thread context; there is no cross-thread reconciliation UX yet
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 032
+
+- Date: 2026-04-12
+- Primary task: `ARC-002`
+- Objective: reduce service sprawl by moving incident-domain and growth-domain orchestration into dedicated packages without changing runtime behavior
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/services/growth/__init__.py`
+  - `app/services/growth/convention_promotion_service.py`
+  - `app/services/growth/skill_miner.py`
+  - `app/services/growth/skill_registry.py`
+  - `app/services/incident/__init__.py`
+  - `app/services/incident/analysis_service.py`
+  - `app/services/incident/feishu_live_flow.py`
+  - `app/services/incident/incident_action_service.py`
+  - `app/services/incident/postmortem_renderer.py`
+  - `app/services/incident/postmortem_service.py`
+  - `app/services/incident/reply_renderer.py`
+  - `app/services/incident/task_sync_service.py`
+  - `app/services/incident/thread_reader.py`
+  - `app/services/review/flow.py`
+  - `app/services/workflow_router.py`
+  - `decision-log.md`
+  - `progress.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_analysis_service.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_convention_promotion_service.py`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_follow_up_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_p0_smoke.py`
+  - `tests/test_postmortem_renderer.py`
+  - `tests/test_postmortem_service.py`
+  - `tests/test_reply_renderer.py`
+  - `tests/test_skill_miner.py`
+  - `tests/test_skill_registry.py`
+  - `tests/test_task_sync_service.py`
+  - `tests/test_thread_reader.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `ARC-002` complete
+  - Incident analysis, live Feishu orchestration, postmortem, task sync, and rendering services now live under `app/services/incident/`
+  - Skill mining, skill registry, and canonical promotion services now live under `app/services/growth/`
+  - Full regression remained green after import updates and prompt-path fixes, so the directory cleanup did not change behavior
+- Blockers:
+  - FastAPI still emits `on_event("shutdown")` deprecation warnings during tests
+  - Root-level service packages are cleaner now, but there is still no dedicated engineering-hardening task for CI/type/lint/deployment cleanup
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
 
 ### Session 001
 

@@ -85,11 +85,17 @@ Implementation note:
 
 ### 3.3 Manual Trigger Parsing Contract
 
-Supported P0 trigger phrases:
+Supported current trigger phrases:
 
 - `分析一下这次故障`
 - `帮我总结当前结论`
 - `基于最新信息重试`
+- `帮我 review 这个 PR https://github.com/org/repo/pull/123`
+- `审一下这个 diff`
+- `批准动作 A1`
+- `采纳建议 F1`
+- `忽略建议 F2`
+- `同步 review 结果`
 
 Local parser contract:
 

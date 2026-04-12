@@ -1,34 +1,54 @@
-from app.models.contracts import PostmortemDraft
+from app.models.contracts import OrgPostmortemStyle, PostmortemDraft
 
 
 class PostmortemRenderer:
-    def render(self, draft: PostmortemDraft) -> str:
+    DEFAULT_LABELS = {
+        "incident_summary": "事件摘要：",
+        "impact_summary": "影响范围：",
+        "timeline": "时间线：",
+        "root_cause_hypothesis": "根因假设：",
+        "resolution_summary": "处理与恢复：",
+        "follow_up_actions": "后续动作：",
+        "open_questions": "待确认问题：",
+        "citations": "参考来源：",
+    }
+
+    def render(
+        self,
+        draft: PostmortemDraft,
+        *,
+        org_style: OrgPostmortemStyle | None = None,
+    ) -> str:
+        labels = dict(self.DEFAULT_LABELS)
+        if org_style is not None:
+            labels.update(org_style.section_labels)
+
         sections = [
             "复盘草稿：",
             draft.title,
             "",
-            "事件摘要：",
+            labels["incident_summary"],
             draft.incident_summary,
             "",
-            "影响范围：",
+            labels["impact_summary"],
             draft.impact_summary,
             "",
-            "时间线：",
+            labels["timeline"],
             *self._render_timeline(draft.timeline),
             "",
-            "根因假设：",
+            labels["root_cause_hypothesis"],
             draft.root_cause_hypothesis,
             "",
-            "处理与恢复：",
+            labels["resolution_summary"],
             draft.resolution_summary,
             "",
-            "后续动作：",
+            labels["follow_up_actions"],
             *self._render_list(draft.follow_up_actions),
             "",
-            "待确认问题：",
+            labels["open_questions"],
             *self._render_list(draft.open_questions),
             "",
-            "参考来源：",
+            labels["citations"],
             *self._render_citations(draft.citations),
         ]
 

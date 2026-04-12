@@ -8,7 +8,7 @@ from app.models.contracts import (
     TodoDraftItem,
     TriggerCommand,
 )
-from app.services.reply_renderer import ReplyRenderer
+from app.services.incident.reply_renderer import ReplyRenderer
 
 
 def build_citations() -> list[KnowledgeCitation]:
