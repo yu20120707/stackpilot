@@ -17,7 +17,7 @@ from app.models.contracts import (
     TodoDraftItem,
     TriggerCommand,
 )
-from app.services.postmortem_service import PostmortemService
+from app.services.incident.postmortem_service import PostmortemService
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "analysis"

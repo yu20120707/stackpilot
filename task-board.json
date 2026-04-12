@@ -614,6 +614,28 @@
         "Repo-side outcome ingestion remains approval-safe, tenant-scoped, and does not infer acceptance from silence."
       ],
       "notes": "Completed with durable GitHub publish anchors in review state and pending actions, a manual same-thread repo-side outcome sync command, explicit published/accepted/ignored/unresolved outcome signals with source attribution, and growth-kernel coverage that now accepts GitHub comment outcomes without inferring acceptance from silence."
+    },
+    {
+      "id": "ARC-002",
+      "title": "Restructure service packages for incident and growth workflows",
+      "milestone": "M11",
+      "status": "done",
+      "priority": 25,
+      "depends_on": [
+        "CR-003"
+      ],
+      "deliverables": [
+        "Incident service package",
+        "Growth service package",
+        "Updated imports and docs",
+        "Full regression verification"
+      ],
+      "acceptance_checks": [
+        "Incident orchestration files live under a dedicated package instead of staying flat in app/services.",
+        "Growth-specific services live under a dedicated package instead of staying flat in app/services.",
+        "Full regression tests still pass after the package reorganization."
+      ],
+      "notes": "Completed by moving incident-domain orchestration into app/services/incident, growth-domain orchestration into app/services/growth, updating imports across app and tests, and fixing prompt-path defaults so the reorganization remains runtime-safe."
     }
   ]
 }

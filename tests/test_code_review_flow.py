@@ -32,8 +32,8 @@ from app.services.review.policy_service import ReviewPolicyService
 from app.services.review.publish_service import ReviewPublishService
 from app.services.review.renderer import ReviewRenderer
 from app.services.review.service import ReviewService
-from app.services.skill_miner import SkillMiner
-from app.services.skill_registry import SkillRegistry
+from app.services.growth.skill_miner import SkillMiner
+from app.services.growth.skill_registry import SkillRegistry
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

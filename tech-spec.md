@@ -75,18 +75,21 @@ app/
     analysis_prompt.md
   services/
     command_parser.py
-    convention_promotion_service.py
-    thread_reader.py
     knowledge_base.py
-    analysis_service.py
-    incident_action_service.py
-    postmortem_renderer.py
-    postmortem_service.py
-    reply_renderer.py
-    skill_miner.py
-    skill_registry.py
-    task_sync_service.py
     workflow_router.py
+    incident/
+      analysis_service.py
+      feishu_live_flow.py
+      incident_action_service.py
+      postmortem_renderer.py
+      postmortem_service.py
+      reply_renderer.py
+      task_sync_service.py
+      thread_reader.py
+    growth/
+      convention_promotion_service.py
+      skill_miner.py
+      skill_registry.py
     kernel/
       action_queue_service.py
       audit_log_service.py
@@ -129,6 +132,8 @@ Module ownership:
 - `core/`: config and logging primitives
 - `models/`: internal contracts defined by `schema.md`
 - `services/`: business orchestration and transformations
+- `services/incident/`: incident-domain flows, rendering, and action helpers
+- `services/growth/`: skill lifecycle and canonical-promotion orchestration
 - `services/kernel/`: shared workflow memory, org convention shaping, and future growth-kernel primitives
 - `services/retrieval/`: deterministic evidence planning, routing, and ranking
 - `prompts/`: prompt templates only

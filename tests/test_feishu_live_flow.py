@@ -15,23 +15,23 @@ from app.models.contracts import (
     SkillCandidateStatus,
     TriggerCommand,
 )
-from app.services.analysis_service import AnalysisService
-from app.services.convention_promotion_service import ConventionPromotionService
-from app.services.feishu_live_flow import FeishuLiveFlow
-from app.services.incident_action_service import IncidentActionService
+from app.services.growth.convention_promotion_service import ConventionPromotionService
+from app.services.growth.skill_miner import SkillMiner
+from app.services.growth.skill_registry import SkillRegistry
+from app.services.incident.analysis_service import AnalysisService
+from app.services.incident.feishu_live_flow import FeishuLiveFlow
+from app.services.incident.incident_action_service import IncidentActionService
+from app.services.incident.postmortem_renderer import PostmortemRenderer
+from app.services.incident.postmortem_service import PostmortemService
+from app.services.incident.reply_renderer import ReplyRenderer
+from app.services.incident.task_sync_service import TaskSyncService
+from app.services.incident.thread_reader import ThreadReader
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
-from app.services.postmortem_renderer import PostmortemRenderer
-from app.services.postmortem_service import PostmortemService
-from app.services.reply_renderer import ReplyRenderer
-from app.services.skill_miner import SkillMiner
-from app.services.skill_registry import SkillRegistry
-from app.services.task_sync_service import TaskSyncService
-from app.services.thread_reader import ThreadReader
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

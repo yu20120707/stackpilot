@@ -18,9 +18,9 @@ from app.models.contracts import (
 )
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.org_convention_service import OrgConventionService
-from app.services.postmortem_renderer import PostmortemRenderer
-from app.services.postmortem_service import PostmortemService
-from app.services.task_sync_service import TaskSyncService
+from app.services.incident.postmortem_renderer import PostmortemRenderer
+from app.services.incident.postmortem_service import PostmortemService
+from app.services.incident.task_sync_service import TaskSyncService
 
 
 class IncidentActionService:

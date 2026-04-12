@@ -11,7 +11,7 @@ from app.models.contracts import (
     SkillCandidateStatus,
 )
 from app.services.kernel.interaction_recorder import InteractionRecorder
-from app.services.skill_registry import SkillRegistry
+from app.services.growth.skill_registry import SkillRegistry
 
 
 class SkillMiner:

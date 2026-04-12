@@ -278,3 +278,23 @@ Copy this format for new confirmed decisions.
   - `progress.md`
 - Revisit when:
   - the repository gains a stronger GitHub-side signal source such as review-thread resolution, richer reply parsing, or an approval-safe webhook ingestion path
+
+### DEC-015
+
+- Date: 2026-04-12
+- Status: confirmed
+- Decision: service layout should separate domain-specific orchestration into `app/services/incident/` and `app/services/growth/`, while keeping `kernel`, `review`, and `retrieval` as dedicated shared or workflow packages.
+- Why: the repository now has enough incident, growth, and review surface area that leaving most orchestration files flat under `app/services/` makes responsibilities harder to explain and maintain.
+- Alternatives considered:
+  - keep all non-review services flat under `app/services/`
+  - add compatibility shims instead of moving files into real subpackages
+- Impacted files:
+  - `app/main.py`
+  - `app/services/incident/*`
+  - `app/services/growth/*`
+  - `app/services/workflow_router.py`
+  - `README.md`
+  - `tech-spec.md`
+  - `progress.md`
+- Revisit when:
+  - another workflow appears and the current package split no longer matches the real service boundaries

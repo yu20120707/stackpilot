@@ -2,11 +2,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.models.contracts import ActionScope, SkillCandidate, SkillCandidateStatus
-from app.services.convention_promotion_service import ConventionPromotionService
+from app.services.growth.convention_promotion_service import ConventionPromotionService
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.canonical_convention_service import CanonicalConventionService
-from app.services.skill_registry import SkillRegistry
+from app.services.growth.skill_registry import SkillRegistry
 
 
 def build_candidate(

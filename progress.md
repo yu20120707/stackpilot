@@ -3,10 +3,10 @@
 ## Current Snapshot
 
 - Date: 2026-04-12
-- Phase: `CR-003` complete
-- Overall status: the codebase now supports durable GitHub review publish anchors, same-thread repo-side outcome sync, and source-attributed `published` / `accepted` / `ignored` / `unresolved` review signals on top of the earlier incident, growth, canonical-convention, and AI-review foundations
+- Phase: `ARC-002` complete
+- Overall status: the codebase now supports durable GitHub review publish anchors, same-thread repo-side outcome sync, and a cleaner service layout with dedicated `incident` and `growth` packages on top of the earlier kernel, retrieval, review, and canonical-convention foundations
 - Recommended next task: `No remaining planned task in task-board.json`
-- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, canonical convention promotion, repo-side review outcome sync, workflow-router dispatching, and `120` passing regression tests
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, canonical convention promotion, repo-side review outcome sync, clearer incident/growth package boundaries, workflow-router dispatching, and `120` passing regression tests
 
 ## Canonical Files
 
@@ -530,6 +530,60 @@ Required fields:
 - Blockers:
   - GitHub outcome ingest currently reads issue comments only; it does not yet parse review-thread resolution, reactions, or webhook-driven repo events
   - Review outcome sync still requires the same Feishu thread context; there is no cross-thread reconciliation UX yet
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 032
+
+- Date: 2026-04-12
+- Primary task: `ARC-002`
+- Objective: reduce service sprawl by moving incident-domain and growth-domain orchestration into dedicated packages without changing runtime behavior
+- Files changed:
+  - `README.md`
+  - `app/main.py`
+  - `app/services/growth/__init__.py`
+  - `app/services/growth/convention_promotion_service.py`
+  - `app/services/growth/skill_miner.py`
+  - `app/services/growth/skill_registry.py`
+  - `app/services/incident/__init__.py`
+  - `app/services/incident/analysis_service.py`
+  - `app/services/incident/feishu_live_flow.py`
+  - `app/services/incident/incident_action_service.py`
+  - `app/services/incident/postmortem_renderer.py`
+  - `app/services/incident/postmortem_service.py`
+  - `app/services/incident/reply_renderer.py`
+  - `app/services/incident/task_sync_service.py`
+  - `app/services/incident/thread_reader.py`
+  - `app/services/review/flow.py`
+  - `app/services/workflow_router.py`
+  - `decision-log.md`
+  - `progress.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_analysis_service.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_convention_promotion_service.py`
+  - `tests/test_feishu_live_flow.py`
+  - `tests/test_follow_up_flow.py`
+  - `tests/test_incident_action_service.py`
+  - `tests/test_p0_smoke.py`
+  - `tests/test_postmortem_renderer.py`
+  - `tests/test_postmortem_service.py`
+  - `tests/test_reply_renderer.py`
+  - `tests/test_skill_miner.py`
+  - `tests/test_skill_registry.py`
+  - `tests/test_task_sync_service.py`
+  - `tests/test_thread_reader.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+- Result:
+  - `ARC-002` complete
+  - Incident analysis, live Feishu orchestration, postmortem, task sync, and rendering services now live under `app/services/incident/`
+  - Skill mining, skill registry, and canonical promotion services now live under `app/services/growth/`
+  - Full regression remained green after import updates and prompt-path fixes, so the directory cleanup did not change behavior
+- Blockers:
+  - FastAPI still emits `on_event("shutdown")` deprecation warnings during tests
+  - Root-level service packages are cleaner now, but there is still no dedicated engineering-hardening task for CI/type/lint/deployment cleanup
 - Next recommended task:
   - `No remaining planned task in task-board.json`
 

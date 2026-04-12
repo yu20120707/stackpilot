@@ -24,7 +24,7 @@ class PostmortemService:
         prompt_path: Path | None = None,
     ) -> None:
         self.llm_client = llm_client
-        self.prompt_path = prompt_path or Path(__file__).resolve().parents[1] / "prompts" / "postmortem_prompt.md"
+        self.prompt_path = prompt_path or Path(__file__).resolve().parents[2] / "prompts" / "postmortem_prompt.md"
 
     async def generate_draft(
         self,

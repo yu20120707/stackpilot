@@ -5,7 +5,7 @@ import pytest
 
 from app.models.contracts import SkillCandidate, SkillCandidateStatus
 from app.services.kernel.audit_log_service import AuditLogService
-from app.services.skill_registry import SkillRegistry
+from app.services.growth.skill_registry import SkillRegistry
 
 
 def build_candidate() -> SkillCandidate:

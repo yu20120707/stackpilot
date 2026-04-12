@@ -14,7 +14,7 @@ from app.models.contracts import (
     TriggerCommand,
 )
 from app.services.kernel.memory_service import MemoryService
-from app.services.thread_reader import ThreadReader
+from app.services.incident.thread_reader import ThreadReader
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "feishu"

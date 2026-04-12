@@ -77,6 +77,8 @@ The service starts on [http://127.0.0.1:8000](http://127.0.0.1:8000).
 - `app/models`: shared contracts
 - `app/prompts`: prompt templates
 - `app/services`: workflow orchestration services
+- `app/services/incident`: incident analysis, rendering, postmortem, task sync, and Feishu live-flow services
+- `app/services/growth`: skill registry, skill mining, and canonical convention promotion services
 - `app/services/kernel`: shared memory, org convention shaping, and future growth-kernel services
 - `app/services/review`: AI code review parsing, normalization, rendering, and publish services
 - `app/services/retrieval`: deterministic retrieval pipeline components

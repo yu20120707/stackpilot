@@ -19,7 +19,7 @@ from app.models.contracts import (
 )
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.canonical_convention_service import CanonicalConventionService
-from app.services.skill_registry import SkillRegistry
+from app.services.growth.skill_registry import SkillRegistry
 
 
 class ConventionPromotionService:

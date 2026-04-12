@@ -19,9 +19,9 @@ from app.models.contracts import (
     ThreadMessage,
     TriggerCommand,
 )
-from app.services.analysis_service import AnalysisService
-from app.services.reply_renderer import ReplyRenderer
-from app.services.thread_reader import ThreadReader
+from app.services.incident.analysis_service import AnalysisService
+from app.services.incident.reply_renderer import ReplyRenderer
+from app.services.incident.thread_reader import ThreadReader
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

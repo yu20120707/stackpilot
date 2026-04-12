@@ -19,16 +19,16 @@ from app.models.contracts import (
     ThreadMemoryState,
     TriggerCommand,
 )
-from app.services.analysis_service import AnalysisService
+from app.services.growth.convention_promotion_service import ConventionPromotionService
+from app.services.growth.skill_miner import SkillMiner
 from app.services.command_parser import extract_approved_action_id, extract_promotion_candidate_id
-from app.services.convention_promotion_service import ConventionPromotionService
-from app.services.incident_action_service import IncidentActionService
+from app.services.incident.analysis_service import AnalysisService
+from app.services.incident.incident_action_service import IncidentActionService
+from app.services.incident.reply_renderer import ReplyRenderer
+from app.services.incident.thread_reader import ThreadReader
 from app.services.kernel.interaction_recorder import InteractionRecorder
 from app.services.kernel.memory_service import MemoryService
 from app.services.knowledge_base import KnowledgeBase
-from app.services.reply_renderer import ReplyRenderer
-from app.services.skill_miner import SkillMiner
-from app.services.thread_reader import ThreadReader
 
 logger = get_logger(__name__)
 

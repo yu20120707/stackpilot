@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models.contracts import NormalizedFeishuMessageEvent, TriggerCommand
-from app.services.feishu_live_flow import FeishuLiveFlow
+from app.services.incident.feishu_live_flow import FeishuLiveFlow
 from app.services.review.flow import CodeReviewFlow
 
 

@@ -17,14 +17,14 @@ from app.models.contracts import (
     TodoDraftItem,
     TriggerCommand,
 )
-from app.services.incident_action_service import IncidentActionService
+from app.services.incident.incident_action_service import IncidentActionService
 from app.services.kernel.action_queue_service import ActionQueueService
 from app.services.kernel.canonical_convention_service import CanonicalConventionService
 from app.services.kernel.memory_service import MemoryService
 from app.services.kernel.org_convention_service import OrgConventionService
-from app.services.postmortem_renderer import PostmortemRenderer
-from app.services.postmortem_service import PostmortemService
-from app.services.task_sync_service import TaskSyncService
+from app.services.incident.postmortem_renderer import PostmortemRenderer
+from app.services.incident.postmortem_service import PostmortemService
+from app.services.incident.task_sync_service import TaskSyncService
 
 
 def build_request() -> AnalysisRequest:

@@ -11,8 +11,8 @@ from app.models.contracts import (
 )
 from app.services.kernel.audit_log_service import AuditLogService
 from app.services.kernel.interaction_recorder import InteractionRecorder
-from app.services.skill_miner import SkillMiner
-from app.services.skill_registry import SkillRegistry
+from app.services.growth.skill_miner import SkillMiner
+from app.services.growth.skill_registry import SkillRegistry
 
 
 def build_action_record(event_id: str, correlation_key: str) -> InteractionRecord:

@@ -6,7 +6,7 @@ from app.models.contracts import (
     PostmortemTimelineEntry,
     SourceType,
 )
-from app.services.postmortem_renderer import PostmortemRenderer
+from app.services.incident.postmortem_renderer import PostmortemRenderer
 
 
 def test_postmortem_renderer_formats_reviewable_postmortem_draft() -> None:
