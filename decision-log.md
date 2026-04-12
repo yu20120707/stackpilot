@@ -257,3 +257,24 @@ Copy this format for new confirmed decisions.
   - `progress.md`
 - Revisit when:
   - promotion evolves from one-shot versioned writes into a richer rollback or diff-review flow
+
+### DEC-014
+
+- Date: 2026-04-12
+- Status: confirmed
+- Decision: GitHub-side review outcomes enter the system only through durable publish anchors plus an explicit same-thread sync command; repo-side signals may enrich review outcome state and growth evidence, but they may not infer acceptance from silence or bypass the existing approval boundary for publication.
+- Why: the project needs better adoption quality than Feishu-only feedback, but automatic polling, webhook ingestion, or code-change heuristics would expand system scope and make acceptance inference too loose for the current stage.
+- Alternatives considered:
+  - infer accepted findings from PR merge or later code changes
+  - poll GitHub automatically after every publish
+  - keep review reuse tied only to Feishu feedback forever
+- Impacted files:
+  - `app/clients/github_review_client.py`
+  - `app/services/review/outcome_service.py`
+  - `app/services/review/flow.py`
+  - `app/models/contracts.py`
+  - `feature-list.md`
+  - `task-board.json`
+  - `progress.md`
+- Revisit when:
+  - the repository gains a stronger GitHub-side signal source such as review-thread resolution, richer reply parsing, or an approval-safe webhook ingestion path

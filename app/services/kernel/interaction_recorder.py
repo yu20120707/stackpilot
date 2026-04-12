@@ -91,6 +91,12 @@ class InteractionRecorder:
                 f"{record.payload.get('finding_id', 'finding')}:"
                 f"{record.payload.get('feedback_status', 'unknown')}"
             )
+        if record.event_type.value == "review_outcome_recorded":
+            return (
+                "review_outcome_recorded:"
+                f"{record.payload.get('finding_id', 'review')}:"
+                f"{record.payload.get('outcome_status', 'unknown')}"
+            )
         if record.event_type.value == "actions_proposed":
             return f"actions_proposed:{record.payload.get('action_count', 0)}"
         if record.event_type.value == "action_executed":

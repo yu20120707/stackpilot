@@ -84,9 +84,15 @@ class SkillMiner:
             matching_records = [
                 record
                 for record in records
-                if record.event_type is InteractionEventType.REVIEW_FEEDBACK_RECORDED
+                if record.event_type in {
+                    InteractionEventType.REVIEW_FEEDBACK_RECORDED,
+                    InteractionEventType.REVIEW_OUTCOME_RECORDED,
+                }
                 and record.pattern_key == pattern_key
-                and record.payload.get("feedback_status") == ReviewFeedbackStatus.ACCEPTED.value
+                and (
+                    record.payload.get("feedback_status") == ReviewFeedbackStatus.ACCEPTED.value
+                    or record.payload.get("outcome_status") == ReviewFeedbackStatus.ACCEPTED.value
+                )
             ]
             if len(matching_records) < 2:
                 continue
@@ -146,7 +152,11 @@ class SkillMiner:
         patterns: set[str] = set()
         for record in records:
             if (
-                record.event_type is not InteractionEventType.REVIEW_FEEDBACK_RECORDED
+                record.event_type
+                not in {
+                    InteractionEventType.REVIEW_FEEDBACK_RECORDED,
+                    InteractionEventType.REVIEW_OUTCOME_RECORDED,
+                }
                 or record.pattern_key is None
             ):
                 continue

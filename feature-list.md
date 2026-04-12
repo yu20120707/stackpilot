@@ -112,7 +112,7 @@ These features are shared by incident and code-review workflows.
 | GR-007 | Evaluation and feedback loop | Planned | Medium | Score which behaviors helped, failed, or were corrected |
 | GR-008 | Canonical knowledge gateway | Implemented | High | Keep product truth anchored to approved docs, not chat memory |
 | GR-009 | Convention promotion flow | Implemented | High | Promote approved patterns into canonical docs through explicit approval |
-| GR-010 | GitHub outcome ingestion | Planned | Medium | Capture publish and acceptance signals from GitHub-side review outcomes |
+| GR-010 | GitHub outcome ingestion | Implemented | Medium | Capture publish, accepted, ignored, and unresolved signals from GitHub-side review outcomes |
 
 ### GR-001 Evidence Ledger
 
@@ -146,6 +146,7 @@ This is the second workflow built on the shared kernel.
 The `M5` MVP is now implemented for explicit Feishu-triggered review requests using inline patch or GitHub PR input, structured draft findings, safe degraded replies, and approval-backed GitHub draft publishing.
 The first `M6` safe-reuse slice is also implemented: explicit review focus routing, repeated-request preference memory, explicit finding feedback recording, and draft review-focus skill candidates.
 The `M7` org-memory slice is now also implemented: explicit user focus still wins, but org-level review defaults can shape review focus when user memory is absent.
+The `M10` repo-outcome slice is now also implemented: publish results persist GitHub anchors, the same Feishu thread can manually sync repo-side outcome comments, and the growth kernel now records `published`, `accepted`, `ignored`, and `unresolved` review signals with source attribution.
 
 | ID | Feature | Priority | Summary |
 | --- | --- | --- | --- |

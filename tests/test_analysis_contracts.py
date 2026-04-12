@@ -22,6 +22,11 @@ from app.models.contracts import (
     ReviewRiskLevel,
     ReviewFeedbackStatus,
     ReviewFocusArea,
+    ReviewOutcomeIngestResult,
+    ReviewOutcomeSignal,
+    ReviewOutcomeSource,
+    ReviewOutcomeStatus,
+    ReviewPublishResult,
     ReviewSourceType,
     StructuredSummary,
     TodoDraftItem,
@@ -216,10 +221,48 @@ def test_review_memory_state_accepts_feedback_ready_findings() -> None:
                 "file_path": "app/api/routes.py",
                 "focus_areas": ["security"],
                 "feedback_status": ReviewFeedbackStatus.ACCEPTED,
+                "outcome_status": ReviewOutcomeStatus.ACCEPTED,
+                "outcome_source": ReviewOutcomeSource.FEISHU_FEEDBACK,
                 "evidence": [],
             }
         ],
+        published_review_ref="https://github.com/openai/demo/pull/12#issuecomment-1",
+        published_review_comment_id=101,
         updated_at=datetime.now(timezone.utc),
     )
 
     assert state.findings[0].feedback_status is ReviewFeedbackStatus.ACCEPTED
+    assert state.findings[0].outcome_status is ReviewOutcomeStatus.ACCEPTED
+    assert state.published_review_comment_id == 101
+
+
+def test_review_outcome_ingest_result_accepts_signal_list() -> None:
+    result = ReviewOutcomeIngestResult(
+        source_ref="https://github.com/openai/demo/pull/12",
+        published_ref="https://github.com/openai/demo/pull/12#issuecomment-1",
+        scanned_comment_count=2,
+        signals=[
+            ReviewOutcomeSignal(
+                finding_id="F1",
+                status=ReviewOutcomeStatus.ACCEPTED,
+                source=ReviewOutcomeSource.GITHUB_COMMENT,
+                source_ref="https://github.com/openai/demo/pull/12#issuecomment-2",
+                observed_at=datetime.now(timezone.utc),
+            )
+        ],
+        message="github_review_outcomes_synced",
+    )
+
+    assert result.signals[0].status is ReviewOutcomeStatus.ACCEPTED
+
+
+def test_review_publish_result_accepts_comment_anchor() -> None:
+    result = ReviewPublishResult(
+        status="published",
+        source_ref="https://github.com/openai/demo/pull/12",
+        message="github_review_published",
+        published_ref="https://github.com/openai/demo/pull/12#issuecomment-1",
+        published_comment_id=101,
+    )
+
+    assert result.published_comment_id == 101

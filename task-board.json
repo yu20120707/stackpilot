@@ -1,6 +1,6 @@
 {
   "project": "stackpilot",
-  "last_updated": "2026-04-11",
+  "last_updated": "2026-04-12",
   "status_definitions": {
     "not_started": "No implementation work has begun.",
     "in_progress": "Actively being implemented or refined.",
@@ -597,7 +597,7 @@
       "id": "CR-003",
       "title": "Add GitHub-side review outcome ingestion and richer adoption signals",
       "milestone": "M10",
-      "status": "not_started",
+      "status": "done",
       "priority": 24,
       "depends_on": [
         "GRW-003"
@@ -613,7 +613,7 @@
         "The growth kernel can distinguish published, accepted, ignored, and unresolved review outcomes with explicit source attribution.",
         "Repo-side outcome ingestion remains approval-safe, tenant-scoped, and does not infer acceptance from silence."
       ],
-      "notes": "This next milestone should reduce reliance on manual Feishu feedback by pulling higher-quality review outcome signals from the repo side."
+      "notes": "Completed with durable GitHub publish anchors in review state and pending actions, a manual same-thread repo-side outcome sync command, explicit published/accepted/ignored/unresolved outcome signals with source attribution, and growth-kernel coverage that now accepts GitHub comment outcomes without inferring acceptance from silence."
     }
   ]
 }

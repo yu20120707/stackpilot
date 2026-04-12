@@ -95,6 +95,7 @@ Supported current trigger phrases:
 - `批准动作 A1`
 - `采纳建议 F1`
 - `忽略建议 F2`
+- `同步 review 结果`
 
 Local parser contract:
 

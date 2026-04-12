@@ -5,6 +5,7 @@ import shutil
 
 import pytest
 
+from app.clients.github_review_client import GitHubIssueComment
 from app.clients.feishu_client import FeishuClient
 from app.models.contracts import (
     ActionScope,
@@ -12,6 +13,8 @@ from app.models.contracts import (
     InteractionEventType,
     NormalizedFeishuMessageEvent,
     ReviewFeedbackStatus,
+    ReviewOutcomeSource,
+    ReviewOutcomeStatus,
     TriggerCommand,
 )
 from app.services.kernel.audit_log_service import AuditLogService
@@ -23,6 +26,7 @@ from app.services.kernel.org_convention_service import OrgConventionService
 from app.services.knowledge_base import KnowledgeBase
 from app.services.review.diff_reader import DiffReader
 from app.services.review.flow import CodeReviewFlow
+from app.services.review.outcome_service import ReviewOutcomeService
 from app.services.review.preference_service import ReviewPreferenceService
 from app.services.review.policy_service import ReviewPolicyService
 from app.services.review.publish_service import ReviewPublishService
@@ -74,19 +78,39 @@ class FakeLLMClient:
 
 
 class FakeGitHubReviewClient:
-    def __init__(self, *, patch_text: str | None = None, publish_url: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        patch_text: str | None = None,
+        publish_url: str | None = None,
+        issue_comments: list[GitHubIssueComment] | None = None,
+    ) -> None:
         self.patch_text = patch_text
         self.publish_url = publish_url
+        self.issue_comments = issue_comments or []
         self.fetch_calls: list[str] = []
         self.publish_calls: list[tuple[str, str]] = []
+        self.list_comment_calls: list[str] = []
 
     async def fetch_pull_request_diff(self, pull_request_url: str) -> str | None:
         self.fetch_calls.append(pull_request_url)
         return self.patch_text
 
-    async def publish_issue_comment(self, *, pull_request_url: str, body: str) -> str | None:
+    async def publish_issue_comment(self, *, pull_request_url: str, body: str) -> GitHubIssueComment | None:
         self.publish_calls.append((pull_request_url, body))
-        return self.publish_url
+        if self.publish_url is None:
+            return None
+        return GitHubIssueComment(
+            comment_id=101,
+            html_url=self.publish_url,
+            body=body,
+            author_login="stackpilot-bot",
+            created_at=datetime.fromisoformat("2026-04-11T02:05:00+00:00"),
+        )
+
+    async def list_issue_comments(self, *, pull_request_url: str) -> list[GitHubIssueComment]:
+        self.list_comment_calls.append(pull_request_url)
+        return list(self.issue_comments)
 
 
 def build_growth_services(tmp_path: Path) -> tuple[InteractionRecorder, SkillMiner]:
@@ -125,6 +149,7 @@ def build_review_flow(
     llm_response: str,
     github_patch: str | None = None,
     publish_url: str | None = None,
+    issue_comments: list[GitHubIssueComment] | None = None,
     reply_success: bool = True,
     knowledge_dir: Path | None = None,
 ) -> tuple[CodeReviewFlow, FakeReviewFeishuClient, FakeGitHubReviewClient, ActionQueueService, InteractionRecorder, MemoryService]:
@@ -133,6 +158,7 @@ def build_review_flow(
     github_client = FakeGitHubReviewClient(
         patch_text=github_patch,
         publish_url=publish_url,
+        issue_comments=issue_comments,
     )
     interaction_recorder, skill_miner = build_growth_services(tmp_path)
     action_queue_service = ActionQueueService(tmp_path / "actions")
@@ -165,6 +191,7 @@ def build_review_flow(
             github_review_client=github_client,
             review_renderer=review_renderer,
         ),
+        review_outcome_service=ReviewOutcomeService(github_client),
         memory_service=memory_service,
         interaction_recorder=interaction_recorder,
         skill_miner=skill_miner,
@@ -235,7 +262,7 @@ async def test_code_review_flow_fetches_github_pr_and_prepares_publish_action(tm
 
 @pytest.mark.anyio
 async def test_code_review_flow_executes_publish_approval(tmp_path: Path) -> None:
-    review_flow, feishu_client, github_client, action_queue_service, interaction_recorder, _ = build_review_flow(
+    review_flow, feishu_client, github_client, action_queue_service, interaction_recorder, memory_service = build_review_flow(
         tmp_path=tmp_path,
         llm_response=load_text("analysis", "code_review_success.json"),
         github_patch=INLINE_PATCH_MESSAGE.split("```diff", maxsplit=1)[1].split("```", maxsplit=1)[0].strip(),
@@ -259,9 +286,115 @@ async def test_code_review_flow_executes_publish_approval(tmp_path: Path) -> Non
     persisted_action = action_queue_service.find_action(scope, "R1")
     assert persisted_action is not None
     assert persisted_action.status.value == "executed"
+    assert persisted_action.review_publish_request is not None
+    assert persisted_action.review_publish_request.published_ref == "https://github.com/openai/demo/pull/12#issuecomment-1"
+    assert persisted_action.review_publish_request.published_comment_id == 101
     assert "https://github.com/openai/demo/pull/12#issuecomment-1" in feishu_client.reply_calls[1][3]
+    review_state = memory_service.load_review_state(
+        memory_service.resolve_scope(build_trigger_event("@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12"))
+    )
+    assert review_state is not None
+    assert review_state.published_review_ref == "https://github.com/openai/demo/pull/12#issuecomment-1"
+    assert review_state.findings[0].outcome_status is ReviewOutcomeStatus.PUBLISHED
+    assert review_state.findings[0].outcome_source is ReviewOutcomeSource.GITHUB_PUBLISH
     records = interaction_recorder.list_thread_records(scope)
     assert records[-1].event_type is InteractionEventType.ACTION_EXECUTED
+
+
+@pytest.mark.anyio
+async def test_code_review_flow_syncs_github_comment_outcome_into_review_state(tmp_path: Path) -> None:
+    review_flow, feishu_client, github_client, _, interaction_recorder, memory_service = build_review_flow(
+        tmp_path=tmp_path,
+        llm_response=load_text("analysis", "code_review_success.json"),
+        github_patch=INLINE_PATCH_MESSAGE.split("```diff", maxsplit=1)[1].split("```", maxsplit=1)[0].strip(),
+        publish_url="https://github.com/openai/demo/pull/12#issuecomment-1",
+        issue_comments=[
+            GitHubIssueComment(
+                comment_id=101,
+                html_url="https://github.com/openai/demo/pull/12#issuecomment-1",
+                body="## AI Code Review Draft",
+                author_login="stackpilot-bot",
+                created_at=datetime.fromisoformat("2026-04-11T02:05:00+00:00"),
+            ),
+            GitHubIssueComment(
+                comment_id=102,
+                html_url="https://github.com/openai/demo/pull/12#issuecomment-2",
+                body="Addressed F1 in the follow-up patch.",
+                author_login="alice",
+                created_at=datetime.fromisoformat("2026-04-11T02:10:00+00:00"),
+            ),
+        ],
+    )
+
+    review_event = build_trigger_event("@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12")
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=review_event,
+    )
+    await review_flow.process_approval(
+        trigger_event=build_trigger_event("批准动作 R1").model_copy(update={"message_id": "om_review_approve_2"}),
+    )
+    handled = await review_flow.process_outcome_sync(
+        trigger_event=build_trigger_event("@stackpilot 同步 review 结果").model_copy(
+            update={"message_id": "om_review_sync_1"}
+        ),
+    )
+
+    assert handled is True
+    assert github_client.list_comment_calls == ["https://github.com/openai/demo/pull/12"]
+    assert "GitHub review 结果已同步" in feishu_client.reply_calls[-1][3]
+    review_state = memory_service.load_review_state(memory_service.resolve_scope(review_event))
+    assert review_state is not None
+    assert review_state.findings[0].outcome_status is ReviewOutcomeStatus.ACCEPTED
+    assert review_state.findings[0].outcome_source is ReviewOutcomeSource.GITHUB_COMMENT
+    assert review_state.findings[0].outcome_source_ref == "https://github.com/openai/demo/pull/12#issuecomment-2"
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review")
+    records = interaction_recorder.list_thread_records(scope)
+    assert records[-1].event_type is InteractionEventType.REVIEW_OUTCOME_RECORDED
+    assert records[-1].payload["outcome_status"] == "accepted"
+
+
+@pytest.mark.anyio
+async def test_code_review_flow_sync_marks_unresolved_without_explicit_github_signal(tmp_path: Path) -> None:
+    review_flow, feishu_client, _, _, interaction_recorder, memory_service = build_review_flow(
+        tmp_path=tmp_path,
+        llm_response=load_text("analysis", "code_review_success.json"),
+        github_patch=INLINE_PATCH_MESSAGE.split("```diff", maxsplit=1)[1].split("```", maxsplit=1)[0].strip(),
+        publish_url="https://github.com/openai/demo/pull/12#issuecomment-1",
+        issue_comments=[
+            GitHubIssueComment(
+                comment_id=101,
+                html_url="https://github.com/openai/demo/pull/12#issuecomment-1",
+                body="## AI Code Review Draft",
+                author_login="stackpilot-bot",
+                created_at=datetime.fromisoformat("2026-04-11T02:05:00+00:00"),
+            )
+        ],
+    )
+
+    review_event = build_trigger_event("@stackpilot 帮我 review 这个 PR https://github.com/openai/demo/pull/12")
+    await review_flow.process_trigger(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        trigger_event=review_event,
+    )
+    await review_flow.process_approval(
+        trigger_event=build_trigger_event("批准动作 R1").model_copy(update={"message_id": "om_review_approve_3"}),
+    )
+    handled = await review_flow.process_outcome_sync(
+        trigger_event=build_trigger_event("@stackpilot 同步 review 结果").model_copy(
+            update={"message_id": "om_review_sync_2"}
+        ),
+    )
+
+    assert handled is True
+    assert "仍未明确处理: 1" in feishu_client.reply_calls[-1][3]
+    review_state = memory_service.load_review_state(memory_service.resolve_scope(review_event))
+    assert review_state is not None
+    assert review_state.findings[0].outcome_status is ReviewOutcomeStatus.UNRESOLVED
+    assert review_state.findings[0].outcome_source is ReviewOutcomeSource.GITHUB_SYNC
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review")
+    records = interaction_recorder.list_thread_records(scope)
+    assert any(record.payload.get("outcome_status") == "unresolved" for record in records)
 
 
 @pytest.mark.anyio

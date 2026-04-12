@@ -24,6 +24,7 @@ from app.services.postmortem_service import PostmortemService
 from app.services.reply_renderer import ReplyRenderer
 from app.services.review.diff_reader import DiffReader
 from app.services.review.flow import CodeReviewFlow
+from app.services.review.outcome_service import ReviewOutcomeService
 from app.services.review.preference_service import ReviewPreferenceService
 from app.services.review.policy_service import ReviewPolicyService
 from app.services.review.publish_service import ReviewPublishService
@@ -140,6 +141,7 @@ def build_services(settings: Settings) -> AppServices:
         github_review_client=github_review_client,
         review_renderer=review_renderer,
     )
+    review_outcome_service = ReviewOutcomeService(github_review_client)
     feishu_live_flow = FeishuLiveFlow(
         feishu_client=feishu_client,
         thread_reader=thread_reader,
@@ -161,6 +163,7 @@ def build_services(settings: Settings) -> AppServices:
         review_service=review_service,
         review_renderer=review_renderer,
         review_publish_service=review_publish_service,
+        review_outcome_service=review_outcome_service,
         memory_service=memory_service,
         interaction_recorder=interaction_recorder,
         skill_miner=skill_miner,

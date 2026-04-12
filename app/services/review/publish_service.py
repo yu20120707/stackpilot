@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.clients.github_review_client import GitHubReviewClient
+from app.clients.github_review_client import GitHubIssueComment, GitHubReviewClient
 from app.models.contracts import (
     ActionScope,
     CodeReviewDraft,
@@ -96,25 +96,34 @@ class ReviewPublishService:
         scope: ActionScope,
         action_id: str,
         approved_by: str,
-    ) -> tuple[PendingIncidentAction | None, str]:
+    ) -> tuple[PendingIncidentAction | None, ReviewPublishResult | None, str]:
         action = self.action_queue_service.find_action(scope, action_id)
         if action is None:
-            return None, self._render_missing_action(action_id)
+            return None, None, self._render_missing_action(action_id)
         if action.action_type is not PendingActionType.REVIEW_PUBLISH or action.review_publish_request is None:
-            return None, f"动作 {action.action_id} 不是可发布的代码审查动作。"
+            return None, None, f"动作 {action.action_id} 不是可发布的代码审查动作。"
         if action.status is not PendingActionStatus.PENDING_APPROVAL:
-            return None, self._render_existing_action_result(action)
+            return None, None, self._render_existing_action_result(action)
 
         publish_request = action.review_publish_request.model_copy(update={"confirmed": True})
-        published_ref = await self.github_review_client.publish_issue_comment(
+        published_comment = await self.github_review_client.publish_issue_comment(
             pull_request_url=publish_request.source_ref,
             body=publish_request.comment_body,
         )
         result = self._build_publish_result(
             request=publish_request,
-            published_ref=published_ref,
+            published_comment=published_comment,
         )
         now = datetime.now(timezone.utc)
+        publish_request = publish_request.model_copy(
+            update={
+                "published_ref": result.published_ref,
+                "published_comment_id": result.published_comment_id,
+                "published_at": (
+                    result.published_at if result.status is ReviewPublishStatus.PUBLISHED else None
+                ),
+            }
+        )
         updated_action = action.model_copy(
             update={
                 "status": (
@@ -130,7 +139,7 @@ class ReviewPublishService:
             }
         )
         self.action_queue_service.update_action(scope, updated_action)
-        return updated_action, self._render_publish_result(updated_action, result)
+        return updated_action, result, self._render_publish_result(updated_action, result)
 
     def _allocate_action_id(self, scope: ActionScope) -> str:
         next_index = 1
@@ -156,9 +165,9 @@ class ReviewPublishService:
         self,
         *,
         request: ReviewPublishRequest,
-        published_ref: str | None,
+        published_comment: GitHubIssueComment | None,
     ) -> ReviewPublishResult:
-        if published_ref is None:
+        if published_comment is None:
             return ReviewPublishResult(
                 status=ReviewPublishStatus.PUBLISH_FAILED,
                 source_ref=request.source_ref,
@@ -169,7 +178,9 @@ class ReviewPublishService:
             status=ReviewPublishStatus.PUBLISHED,
             source_ref=request.source_ref,
             message="github_review_published",
-            published_ref=published_ref,
+            published_ref=published_comment.html_url,
+            published_comment_id=published_comment.comment_id,
+            published_at=published_comment.created_at,
         )
 
     def _render_missing_action(self, action_id: str) -> str:

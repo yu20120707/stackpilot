@@ -61,6 +61,13 @@ REVIEW_FEEDBACK_PATTERN = re.compile(
     r"^(?:(采纳|接受|忽略|驳回))(?:审查|建议|finding)?\s+([a-z0-9_-]+)$",
     re.IGNORECASE,
 )
+SYNC_REVIEW_OUTCOME_TOKENS = (
+    "同步review结果",
+    "同步审查结果",
+    "同步代码审查结果",
+    "拉取review结果",
+    "刷新review结果",
+)
 PROMOTE_CANONICAL_PATTERN = re.compile(
     r"^(?:沉淀|推广|提升为)(?:规范|技能|canonical)?\s+([a-z0-9_-]+)$",
     re.IGNORECASE,
@@ -78,6 +85,9 @@ def parse_trigger_command(message_text: str) -> TriggerCommand | None:
 
     if extract_review_feedback(normalized_text) is not None:
         return TriggerCommand.REVIEW_FEEDBACK
+
+    if is_review_outcome_sync_trigger(message_text):
+        return TriggerCommand.SYNC_REVIEW_OUTCOME
 
     if extract_promotion_candidate_id(normalized_text) is not None:
         return TriggerCommand.PROMOTE_CANONICAL
@@ -137,6 +147,15 @@ def extract_promotion_candidate_id(message_text: str) -> str | None:
     if match is None:
         return None
     return match.group(1)
+
+
+def is_review_outcome_sync_trigger(message_text: str) -> bool:
+    normalized = normalize_message_text(message_text)
+    if not normalized:
+        return False
+
+    collapsed_text = collapse_for_matching(normalized.lower())
+    return any(token in collapsed_text for token in SYNC_REVIEW_OUTCOME_TOKENS)
 
 
 def is_follow_up_trigger(trigger_command: TriggerCommand) -> bool:

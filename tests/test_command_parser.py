@@ -44,6 +44,11 @@ def test_command_parser_matches_review_feedback_commands() -> None:
     assert extract_review_feedback("驳回建议 f4") == ("ignored", "F4")
 
 
+def test_command_parser_matches_review_outcome_sync_commands() -> None:
+    assert parse_trigger_command("同步 review 结果") is TriggerCommand.SYNC_REVIEW_OUTCOME
+    assert parse_trigger_command("@stackpilot 同步审查结果 https://github.com/openai/demo/pull/12") is TriggerCommand.SYNC_REVIEW_OUTCOME
+
+
 def test_command_parser_matches_canonical_promotion_commands() -> None:
     assert parse_trigger_command("沉淀规范 skill-review-security-focus") is TriggerCommand.PROMOTE_CANONICAL
     assert parse_trigger_command("@stackpilot 推广技能 skill-review-security-focus") is TriggerCommand.PROMOTE_CANONICAL

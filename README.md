@@ -15,12 +15,14 @@ The current implemented baseline already covers:
 - append-only evidence recording and draft skill candidates
 - AI code review from inline diff or GitHub PR input
 - approval-backed GitHub draft review publishing
+- durable GitHub publish anchors plus same-thread repo-side outcome sync
 - review focus routing with user preference memory
 - org-level review default focus shaping
 - team-style postmortem draft and rendering shaping
 - approved canonical convention gateway for tenant-scoped policy and style docs
 - approval-backed promotion from approved skill candidates into versioned canonical docs
 - explicit finding adoption signals and review-focus draft skill candidates
+- published, accepted, ignored, and unresolved review outcome signals with source attribution
 
 The next product direction is no longer just "summarize one thread". It is:
 

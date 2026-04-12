@@ -35,6 +35,13 @@ class WorkflowRouter:
             if handled:
                 return
 
+        if trigger_command is TriggerCommand.SYNC_REVIEW_OUTCOME:
+            handled = await self.code_review_flow.process_outcome_sync(
+                trigger_event=trigger_event,
+            )
+            if handled:
+                return
+
         if trigger_command is TriggerCommand.APPROVE_ACTION:
             handled = await self.code_review_flow.process_approval(
                 trigger_event=trigger_event,

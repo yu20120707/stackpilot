@@ -21,6 +21,7 @@ The codebase still preserves that foundation, but the implemented baseline now a
 - manual AI code review from inline diff or GitHub PR input
 - deterministic diff normalization and structured draft review findings
 - approval-backed GitHub draft review publishing
+- durable GitHub publish anchors and same-thread repo-side outcome sync
 - review focus routing with repeated-request user preference memory
 - explicit review finding feedback recording and review-memory persistence
 - org-level review default focus shaping
@@ -97,6 +98,7 @@ app/
       diff_reader.py
       flow.py
       input_parser.py
+      outcome_service.py
       preference_service.py
       policy_service.py
       publish_service.py
@@ -212,6 +214,7 @@ P0 supported manual commands:
 - `审一下这个 diff` with inline patch content
 - `采纳建议 F1`
 - `忽略建议 F2`
+- `同步 review 结果`
 - `沉淀规范 skill-review-security-focus`
 
 The route must hand off a normalized trigger event to a workflow router, which then dispatches either incident analysis or AI code review to the service layer.

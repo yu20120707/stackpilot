@@ -103,3 +103,33 @@ def test_interaction_recorder_summarizes_review_feedback_events(tmp_path: Path) 
 
     audit_entries = audit_log_service.list_entries("oc_xxx")
     assert audit_entries[-1].summary == "review_feedback_recorded:F1:accepted"
+
+
+def test_interaction_recorder_summarizes_review_outcome_events(tmp_path: Path) -> None:
+    audit_log_service = AuditLogService(tmp_path / "records")
+    recorder = InteractionRecorder(
+        tmp_path / "records",
+        audit_log_service=audit_log_service,
+    )
+    scope = ActionScope(tenant_id="oc_xxx", thread_id="omt_review")
+
+    recorder.record(
+        scope,
+        InteractionRecord(
+            event_id="evt-review-outcome",
+            correlation_key="review-outcome:F1:accepted",
+            event_type=InteractionEventType.REVIEW_OUTCOME_RECORDED,
+            tenant_id="oc_xxx",
+            thread_id="omt_review",
+            actor_id="ou_bob",
+            occurred_at=datetime.now(timezone.utc),
+            trigger_command=TriggerCommand.SYNC_REVIEW_OUTCOME,
+            payload={
+                "finding_id": "F1",
+                "outcome_status": "accepted",
+            },
+        ),
+    )
+
+    audit_entries = audit_log_service.list_entries("oc_xxx")
+    assert audit_entries[-1].summary == "review_outcome_recorded:F1:accepted"

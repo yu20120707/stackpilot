@@ -2,11 +2,11 @@
 
 ## Current Snapshot
 
-- Date: 2026-04-11
-- Phase: `GRW-003` complete
-- Overall status: the codebase now supports approval-backed promotion from approved skill candidates into versioned canonical convention docs, so the growth kernel can move reviewed patterns into runtime-readable policy artifacts without manual file authoring
-- Recommended next task: `CR-003 Add GitHub-side review outcome ingestion and richer adoption signals`
-- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, review preference memory, review feedback recording, org convention shaping, canonical convention docs, approval-backed canonical promotion, workflow-router dispatching, and `112` passing regression tests
+- Date: 2026-04-12
+- Phase: `CR-003` complete
+- Overall status: the codebase now supports durable GitHub review publish anchors, same-thread repo-side outcome sync, and source-attributed `published` / `accepted` / `ignored` / `unresolved` review signals on top of the earlier incident, growth, canonical-convention, and AI-review foundations
+- Recommended next task: `No remaining planned task in task-board.json`
+- Last known good state: runnable incident-analysis and AI-code-review scaffold with explicit thread memory, deterministic evidence routing, approval-backed incident and review actions, append-only growth evidence, canonical convention promotion, repo-side review outcome sync, workflow-router dispatching, and `120` passing regression tests
 
 ## Canonical Files
 
@@ -54,7 +54,7 @@
 - If the new roadmap is not backed by explicit memory, approval, and audit layers, the product story will outgrow the implementation.
 - Without real Feishu tenant credentials, the last mile of platform validation still depends on manual webhook setup.
 - GitHub PR diff fetch and draft publish paths still depend on repository reachability and, for private repos, a configured `GITHUB_TOKEN`.
-- GitHub-side adoption and review-outcome signals are still missing; review reuse still depends mainly on explicit Feishu feedback and publish events.
+- GitHub outcome sync currently depends on an explicit same-thread command and issue-comment parsing; richer signals such as review-thread resolution or webhook-backed ingest are not implemented yet.
 
 ## Handoff Rules
 
@@ -487,6 +487,51 @@ Required fields:
   - Promotion currently targets approved skill candidates only; it does not yet support a richer diff-review workflow for canonical doc updates
 - Next recommended task:
   - `CR-003 Add GitHub-side review outcome ingestion and richer adoption signals`
+
+### Session 031
+
+- Date: 2026-04-12
+- Primary task: `CR-003`
+- Objective: add approval-safe GitHub-side review outcome ingestion so published review comments can be reconciled with repo-side signals and fed back into the growth kernel with explicit source attribution
+- Files changed:
+  - `README.md`
+  - `api-contracts.md`
+  - `app/clients/github_review_client.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/command_parser.py`
+  - `app/services/kernel/interaction_recorder.py`
+  - `app/services/review/flow.py`
+  - `app/services/review/outcome_service.py`
+  - `app/services/review/publish_service.py`
+  - `app/services/skill_miner.py`
+  - `app/services/workflow_router.py`
+  - `decision-log.md`
+  - `feature-list.md`
+  - `progress.md`
+  - `schema.md`
+  - `task-board.json`
+  - `tech-spec.md`
+  - `tests/test_analysis_contracts.py`
+  - `tests/test_code_review_flow.py`
+  - `tests/test_command_parser.py`
+  - `tests/test_feishu_callback.py`
+  - `tests/test_interaction_recorder.py`
+  - `tests/test_skill_miner.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_command_parser.py tests/test_feishu_callback.py tests/test_analysis_contracts.py tests/test_interaction_recorder.py tests/test_skill_miner.py tests/test_code_review_flow.py -q`
+  - `.\\.venv\\Scripts\\python.exe -m pytest`
+  - `powershell -ExecutionPolicy Bypass -File .\\init.ps1`
+- Result:
+  - `CR-003` complete
+  - Review publish now persists GitHub comment anchors into both the pending action and thread-scoped review memory, including comment id, URL, and published timestamp
+  - Users can now issue `同步 review 结果` from the same Feishu thread to ingest explicit GitHub-side outcome comments without introducing automatic polling or weakening the approval boundary
+  - The growth kernel now records source-attributed `published`, `accepted`, `ignored`, and `unresolved` review signals, and accepted GitHub comment outcomes can contribute to review skill-candidate mining without inferring acceptance from silence
+- Blockers:
+  - GitHub outcome ingest currently reads issue comments only; it does not yet parse review-thread resolution, reactions, or webhook-driven repo events
+  - Review outcome sync still requires the same Feishu thread context; there is no cross-thread reconciliation UX yet
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
 
 ### Session 001
 

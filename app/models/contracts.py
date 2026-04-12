@@ -13,6 +13,7 @@ class TriggerCommand(str, Enum):
     RERUN_ANALYSIS = "rerun_analysis"
     REVIEW_CODE = "review_code"
     REVIEW_FEEDBACK = "review_feedback"
+    SYNC_REVIEW_OUTCOME = "sync_review_outcome"
     PROMOTE_CANONICAL = "promote_canonical"
     APPROVE_ACTION = "approve_action"
 
@@ -78,6 +79,7 @@ class InteractionEventType(str, Enum):
     ANALYSIS_REPLY_SENT = "analysis_reply_sent"
     REVIEW_DRAFT_SENT = "review_draft_sent"
     REVIEW_FEEDBACK_RECORDED = "review_feedback_recorded"
+    REVIEW_OUTCOME_RECORDED = "review_outcome_recorded"
     ACTIONS_PROPOSED = "actions_proposed"
     ACTION_EXECUTED = "action_executed"
     REPLY_SEND_FAILED = "reply_send_failed"
@@ -109,6 +111,20 @@ class ReviewFocusArea(str, Enum):
 class ReviewFeedbackStatus(str, Enum):
     ACCEPTED = "accepted"
     IGNORED = "ignored"
+
+
+class ReviewOutcomeStatus(str, Enum):
+    PUBLISHED = "published"
+    ACCEPTED = "accepted"
+    IGNORED = "ignored"
+    UNRESOLVED = "unresolved"
+
+
+class ReviewOutcomeSource(str, Enum):
+    FEISHU_FEEDBACK = "feishu_feedback"
+    GITHUB_PUBLISH = "github_publish"
+    GITHUB_COMMENT = "github_comment"
+    GITHUB_SYNC = "github_sync"
 
 
 class CanonicalConventionStatus(str, Enum):
@@ -200,6 +216,10 @@ class ReviewFinding(BaseModel):
     focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
     feedback_status: ReviewFeedbackStatus | None = None
     feedback_recorded_at: datetime | None = None
+    outcome_status: ReviewOutcomeStatus | None = None
+    outcome_source: ReviewOutcomeSource | None = None
+    outcome_source_ref: str | None = None
+    outcome_recorded_at: datetime | None = None
     evidence: list[ReviewEvidenceReference] = Field(default_factory=list)
 
 
@@ -237,6 +257,9 @@ class ReviewPublishRequest(BaseModel):
     comment_body: NonEmptyText = Field(min_length=1)
     require_confirmation: bool = True
     confirmed: bool = False
+    published_ref: str | None = None
+    published_comment_id: int | None = Field(default=None, ge=1)
+    published_at: datetime | None = None
 
 
 class ReviewPublishResult(BaseModel):
@@ -246,6 +269,29 @@ class ReviewPublishResult(BaseModel):
     source_ref: NonEmptyText = Field(min_length=1)
     message: NonEmptyText = Field(min_length=1)
     published_ref: str | None = None
+    published_comment_id: int | None = Field(default=None, ge=1)
+    published_at: datetime | None = None
+
+
+class ReviewOutcomeSignal(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    finding_id: str | None = None
+    status: ReviewOutcomeStatus
+    source: ReviewOutcomeSource
+    source_ref: str | None = None
+    observed_at: datetime
+    note: str | None = None
+
+
+class ReviewOutcomeIngestResult(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    source_ref: NonEmptyText = Field(min_length=1)
+    published_ref: str | None = None
+    scanned_comment_count: int = Field(default=0, ge=0)
+    signals: list[ReviewOutcomeSignal] = Field(default_factory=list)
+    message: NonEmptyText = Field(min_length=1)
 
 
 class CodeReviewRequest(BaseModel):
@@ -277,6 +323,10 @@ class ReviewMemoryState(BaseModel):
     last_review_status: ReviewResultStatus
     focus_areas: list[ReviewFocusArea] = Field(default_factory=list)
     findings: list[ReviewFinding] = Field(default_factory=list)
+    published_review_ref: str | None = None
+    published_review_comment_id: int | None = Field(default=None, ge=1)
+    published_at: datetime | None = None
+    last_outcome_sync_at: datetime | None = None
     updated_at: datetime
 
 

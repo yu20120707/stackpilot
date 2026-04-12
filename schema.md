@@ -47,6 +47,7 @@ Supported `trigger_command` values in P0:
 - `rerun_analysis`
 - `review_code`
 - `review_feedback`
+- `sync_review_outcome`
 - `promote_canonical`
 - `approve_action`
 
@@ -443,7 +444,7 @@ Field rules:
 
 - `event_id`: required unique event id
 - `correlation_key`: required dedupe key for repeated deliveries
-- `event_type`: required enum: `analysis_reply_sent`, `review_draft_sent`, `review_feedback_recorded`, `actions_proposed`, `action_executed`, `reply_send_failed`
+- `event_type`: required enum: `analysis_reply_sent`, `review_draft_sent`, `review_feedback_recorded`, `review_outcome_recorded`, `actions_proposed`, `action_executed`, `reply_send_failed`
 - `tenant_id`: required tenant/chat id
 - `thread_id`: required thread id
 - `actor_id`: required actor id
@@ -581,8 +582,12 @@ Field rules:
 - `finding_id`: runtime-assigned stable id such as `F1`, used for explicit feedback commands in the same thread
 - `focus_areas`: request-resolved focus labels such as `bug_risk`, `test_gap`, or `security`
 - `feedback_status`: optional enum: `accepted`, `ignored`, only present after an explicit user feedback command
+- `outcome_status`: optional enum: `published`, `accepted`, `ignored`, `unresolved`
+- `outcome_source`: optional enum: `feishu_feedback`, `github_publish`, `github_comment`, `github_sync`
+- `outcome_source_ref`: optional string pointing to the Feishu thread or GitHub comment URL that produced the latest outcome
 - `evidence`: optional per-finding evidence refs, but runtime should try to attach diff-hunk evidence whenever a file-scoped finding exists
 - GitHub publication remains approval-gated and is stored as a pending `review_publish` action in the shared action queue
+- review memory may also persist `published_review_ref`, `published_review_comment_id`, `published_at`, and `last_outcome_sync_at` once the draft has been published or synced
 
 ## 10.5 Org Convention Memory Models
 

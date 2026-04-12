@@ -106,6 +106,27 @@ def test_feishu_callback_accepts_review_feedback_trigger() -> None:
     assert body["data"]["trigger_command"] == "review_feedback"
 
 
+def test_feishu_callback_accepts_review_outcome_sync_trigger() -> None:
+    class FakeWorkflowRouter:
+        async def process_trigger(self, *, trigger_command, trigger_event) -> None:
+            _ = (trigger_command, trigger_event)
+
+    app.state.services.workflow_router = FakeWorkflowRouter()
+    client = TestClient(app)
+    payload = load_fixture("supported_message_event.json")
+    payload["event"]["message"]["content"] = json.dumps(
+        {"text": "@stackpilot 同步 review 结果"},
+        ensure_ascii=False,
+    )
+
+    response = client.post("/api/feishu/events", json=payload)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["data"]["status"] == "accepted"
+    assert body["data"]["trigger_command"] == "sync_review_outcome"
+
+
 def test_feishu_callback_accepts_canonical_promotion_trigger() -> None:
     class FakeWorkflowRouter:
         async def process_trigger(self, *, trigger_command, trigger_event) -> None:
