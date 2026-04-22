@@ -9,12 +9,17 @@ from app.clients.github_review_client import GitHubIssueComment
 from app.clients.feishu_client import FeishuClient
 from app.models.contracts import (
     ActionScope,
+    CodeReviewRequest,
+    DiffFileChange,
+    DiffHunk,
     FeishuReplySendResult,
     InteractionEventType,
     NormalizedFeishuMessageEvent,
     ReviewFeedbackStatus,
+    ReviewFocusArea,
     ReviewOutcomeSource,
     ReviewOutcomeStatus,
+    ReviewSourceType,
     TriggerCommand,
 )
 from app.services.kernel.audit_log_service import AuditLogService
@@ -212,6 +217,121 @@ index 0000000..1111111 100644
  return {\"title\": title, \"owner\": owner}
 ```
 """
+
+
+@pytest.mark.anyio
+async def test_review_service_prioritizes_risk_sensitive_files_in_prompt() -> None:
+    fake_llm = FakeLLMClient(load_text("analysis", "code_review_success.json"))
+    review_service = ReviewService(fake_llm)
+    request = CodeReviewRequest(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        chat_id="oc_xxx",
+        thread_id="omt_review_prompt",
+        trigger_message_id="om_review_prompt_1",
+        user_id="ou_xxx",
+        source_type=ReviewSourceType.PATCH_TEXT,
+        source_ref="inline_patch",
+        raw_input="diff --git a/app/services/auth/token_service.py b/app/services/auth/token_service.py",
+        normalized_patch="diff --git a/app/services/auth/token_service.py b/app/services/auth/token_service.py",
+        files=[
+            DiffFileChange(
+                file_path="docs/notes.md",
+                change_type="modified",
+                additions=1,
+                deletions=0,
+                hunks=[DiffHunk(header="@@ -1 +1 @@ notes", snippet="+docs change")],
+            ),
+            DiffFileChange(
+                file_path="app/services/auth/token_service.py",
+                change_type="modified",
+                additions=2,
+                deletions=1,
+                hunks=[DiffHunk(header="@@ -1 +1 @@ token", snippet="+token = value")],
+            ),
+            DiffFileChange(
+                file_path="tests/test_token_service.py",
+                change_type="modified",
+                additions=4,
+                deletions=0,
+                hunks=[DiffHunk(header="@@ -1 +1 @@ test", snippet="+assert token")],
+            ),
+        ],
+        focus_areas=[ReviewFocusArea.BUG_RISK, ReviewFocusArea.SECURITY],
+        source_message_text="@stackpilot 审一下这个 diff",
+    )
+
+    await review_service.review(request)
+
+    _, user_prompt = fake_llm.calls[0]
+    assert "patch_overview:" in user_prompt
+    assert "- changed_files: 3" in user_prompt
+    assert "prioritized_files:" in user_prompt
+    assert user_prompt.index("tests/test_token_service.py") < user_prompt.index("docs/notes.md")
+    assert user_prompt.index("app/services/auth/token_service.py") < user_prompt.index("docs/notes.md")
+
+
+@pytest.mark.anyio
+async def test_review_service_backfills_evidence_from_matching_hunk() -> None:
+    llm_response = json.dumps(
+        {
+            "status": "success",
+            "overall_assessment": "owner default handling needs attention.",
+            "overall_risk": "medium",
+            "findings": [
+                {
+                    "title": "Missing owner default fallback",
+                    "severity": "medium",
+                    "summary": "The owner fallback hunk should be used as evidence.",
+                    "file_path": "app/services/auth/token_service.py",
+                    "line_start": 18,
+                    "line_end": 19,
+                    "evidence": [],
+                }
+            ],
+            "missing_context": [],
+            "publish_recommendation": "Keep as draft.",
+        }
+    )
+    fake_llm = FakeLLMClient(llm_response)
+    review_service = ReviewService(fake_llm)
+    request = CodeReviewRequest(
+        trigger_command=TriggerCommand.REVIEW_CODE,
+        chat_id="oc_xxx",
+        thread_id="omt_review_prompt",
+        trigger_message_id="om_review_prompt_2",
+        user_id="ou_xxx",
+        source_type=ReviewSourceType.PATCH_TEXT,
+        source_ref="inline_patch",
+        raw_input="diff --git a/app/services/auth/token_service.py b/app/services/auth/token_service.py",
+        normalized_patch="diff --git a/app/services/auth/token_service.py b/app/services/auth/token_service.py",
+        files=[
+            DiffFileChange(
+                file_path="app/services/auth/token_service.py",
+                change_type="modified",
+                additions=2,
+                deletions=1,
+                hunks=[
+                    DiffHunk(
+                        header="@@ -1 +1 @@ token",
+                        snippet="+token = payload.get(\"token\")",
+                    ),
+                    DiffHunk(
+                        header="@@ -10 +10 @@ owner",
+                        snippet="+owner = payload.get(\"owner\", \"unknown\")",
+                    ),
+                ],
+            ),
+        ],
+        focus_areas=[ReviewFocusArea.BUG_RISK, ReviewFocusArea.SECURITY],
+        source_message_text="@stackpilot 审一下这个 diff",
+    )
+
+    review_draft = await review_service.review(request)
+
+    assert review_draft.findings[0].evidence
+    evidence = review_draft.findings[0].evidence[0]
+    assert evidence.label.endswith("@@ -10 +10 @@ owner")
+    assert "owner = payload.get(\"owner\", \"unknown\")" in evidence.snippet
 
 
 @pytest.mark.anyio

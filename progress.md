@@ -1213,6 +1213,31 @@ Required fields:
 - Next recommended task:
   - `Use tests/live_feishu_robot_prompts.md in Feishu and verify whether live replies now show relevant references`
 
+### Session 026
+
+- Date: 2026-04-22
+- Primary task: `CR-011`
+- Objective: tighten code review quality by prioritizing higher-risk files in the prompt, adding a patch overview, and backfilling findings with the most relevant diff hunk while keeping the existing approval-gated publish flow intact
+- Files changed:
+  - `agent.md`
+  - `app/prompts/code_review_prompt.md`
+  - `app/services/review/service.py`
+  - `progress.md`
+  - `rd-incident-ai-assistant-prd.md`
+  - `task-board.json`
+  - `tests/test_code_review_flow.py`
+- Checks run:
+  - `.\.venv\Scripts\python.exe -m pytest tests/test_diff_reader.py tests/test_code_review_flow.py -q`
+- Result:
+  - `CR-011` complete
+  - Review prompts now carry a patch overview and risk-aware file ordering instead of relying on a flat file list
+  - Evidence backfill now prefers the most relevant hunk for a finding instead of always using the first hunk
+  - PRD and working-contract docs now describe the optimized CR workflow rather than the older straight diff-to-draft flow
+- Blockers:
+  - No blocking issue remained for the current review-flow refinement
+- Next recommended task:
+  - `Start the new alert-ingress branch work on a fresh feature branch`
+
 ## Session Template
 
 Copy this block for the next session.

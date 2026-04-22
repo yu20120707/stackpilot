@@ -108,12 +108,13 @@
 
 ### 8.2 Code Review Workflow
 
-1. 用户手动提交 code diff / PR patch。
-2. 系统读取变更并标准化评审请求。
-3. 系统检索 review policy、历史经验和规则依据。
-4. 系统输出结构化 findings 草稿。
-5. 用户确认后，系统再发布到外部 review 平台。
-6. 系统记录哪些 finding 被采纳、忽略或修正。
+1. 用户在飞书线程里手动提交 diff / patch / PR 链接并触发 review。
+2. 系统先做输入解析，只保留一个可审查目标，然后把 PR 链接或 patch 标准化成 review request。
+3. 如果是 PR 输入，系统拉取 GitHub diff，并用 DiffReader 把变更拆成文件、hunk 和摘要。
+4. 系统补充 review focus、review policy citation 和团队规则依据，再拼成结构化输入交给 LLM。
+5. LLM 返回结构化 review draft，系统保留 findings、风险等级、缺失上下文和发布建议。
+6. 如果是 GitHub PR，系统先生成待审批的 publish action，用户确认后才真正发布到外部 review 平台。
+7. 系统记录哪些 finding 被采纳、忽略或修正，并把 outcome 回流到 review state 和 memory。
 
 ## 9. 当前实现与后续扩展
 

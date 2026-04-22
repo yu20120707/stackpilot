@@ -1,6 +1,6 @@
 {
   "project": "stackpilot",
-  "last_updated": "2026-04-12",
+  "last_updated": "2026-04-22",
   "status_definitions": {
     "not_started": "No implementation work has begun.",
     "in_progress": "Actively being implemented or refined.",
@@ -636,6 +636,28 @@
         "Full regression tests still pass after the package reorganization."
       ],
       "notes": "Completed by moving incident-domain orchestration into app/services/incident, growth-domain orchestration into app/services/growth, updating imports across app and tests, and fixing prompt-path defaults so the reorganization remains runtime-safe."
+    },
+    {
+      "id": "CR-011",
+      "title": "Tighten code review context ordering and evidence anchoring",
+      "milestone": "M12",
+      "status": "done",
+      "priority": 26,
+      "depends_on": [
+        "CR-003"
+      ],
+      "deliverables": [
+        "Risk-aware file ordering",
+        "Patch overview prompt block",
+        "Relevant hunk backfill",
+        "PRD and working-contract sync"
+      ],
+      "acceptance_checks": [
+        "Review prompts prioritize higher-risk files instead of flat file order.",
+        "Finding evidence backfills from the best-matching hunk when possible.",
+        "The review workflow docs describe the optimized flow."
+      ],
+      "notes": "Completed with patch-overview prompt context, risk-aware file ordering, relevance-based hunk selection for evidence backfill, and docs alignment in agent.md and the PRD."
     }
   ]
 }

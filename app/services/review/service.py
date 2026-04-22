@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -10,6 +11,7 @@ from app.models.contracts import (
     CodeReviewDraft,
     CodeReviewFailureReply,
     CodeReviewRequest,
+    DiffFileChange,
     ReviewEvidenceReference,
     ReviewEvidenceType,
     ReviewFinding,
@@ -51,29 +53,32 @@ class ReviewService:
         return self.prompt_path.read_text(encoding="utf-8").strip()
 
     def _build_user_prompt(self, request: CodeReviewRequest) -> str:
+        ordered_files = self._ordered_files(request.files)
         file_summary = "\n".join(
             f"- {file.file_path} | type={file.change_type} | +{file.additions} -{file.deletions}"
-            for file in request.files[:12]
+            for file in ordered_files[:12]
         ) or "- none"
         policy_refs = "\n".join(
             f"- {citation.label} | {citation.source_uri} | {citation.snippet}"
             for citation in request.policy_citations
         ) or "- none"
         review_focus = ", ".join(item.value for item in request.focus_areas) or "bug_risk, test_gap"
-        patch_excerpt = self._build_patch_excerpt(request)
+        patch_overview = self._build_patch_overview(ordered_files)
+        patch_excerpt = self._build_patch_excerpt(request, ordered_files)
 
         return (
             f"review_source_type: {request.source_type.value}\n"
             f"review_source_ref: {request.source_ref}\n"
             f"review_focus_areas: {review_focus}\n"
+            f"patch_overview:\n{patch_overview}\n\n"
             f"changed_files:\n{file_summary}\n\n"
             f"policy_refs:\n{policy_refs}\n\n"
             f"patch_excerpt:\n{patch_excerpt}\n"
         )
 
-    def _build_patch_excerpt(self, request: CodeReviewRequest) -> str:
+    def _build_patch_excerpt(self, request: CodeReviewRequest, ordered_files: list[DiffFileChange]) -> str:
         segments: list[str] = []
-        for file in request.files[:5]:
+        for file in ordered_files[:5]:
             segments.append(
                 f"FILE: {file.file_path} ({file.change_type}, +{file.additions}, -{file.deletions})"
             )
@@ -86,6 +91,29 @@ class ReviewService:
         if excerpt:
             return excerpt[:4000]
         return request.normalized_patch[:4000]
+
+    def _build_patch_overview(self, ordered_files: list[DiffFileChange]) -> str:
+        if not ordered_files:
+            return "- no parsed files"
+
+        total_additions = sum(file.additions for file in ordered_files)
+        total_deletions = sum(file.deletions for file in ordered_files)
+        selected_files = min(len(ordered_files), 5)
+        omitted_files = max(0, len(ordered_files) - selected_files)
+        lines = [
+            f"- changed_files: {len(ordered_files)}",
+            f"- total_additions: {total_additions}",
+            f"- total_deletions: {total_deletions}",
+            f"- selected_files_for_excerpt: {selected_files}",
+        ]
+        if omitted_files:
+            lines.append(f"- omitted_files_from_excerpt: {omitted_files}")
+        lines.append("- prioritized_files:")
+        for file in ordered_files[:5]:
+            lines.append(
+                f"  - {file.file_path} | type={file.change_type} | +{file.additions} -{file.deletions}"
+            )
+        return "\n".join(lines)
 
     def _parse_review_response(self, raw_response: str) -> CodeReviewDraft:
         cleaned_response = raw_response.strip()
@@ -246,6 +274,31 @@ class ReviewService:
             return True
         return len(request.files) == 0
 
+    def _ordered_files(self, files: list[DiffFileChange]) -> list[DiffFileChange]:
+        return sorted(files, key=self._file_sort_key)
+
+    def _file_sort_key(self, file: DiffFileChange) -> tuple[int, int, str]:
+        return (
+            -self._file_priority(file),
+            -(file.additions + file.deletions),
+            file.file_path.lower(),
+        )
+
+    def _file_priority(self, file: DiffFileChange) -> int:
+        path = file.file_path.replace("\\", "/").lower()
+        score = file.additions + file.deletions
+
+        if file.change_type in {"added", "deleted", "renamed"}:
+            score += 20
+        if any(keyword in path for keyword in ("auth", "security", "permission", "token", "session")):
+            score += 50
+        if any(keyword in path for keyword in ("test", "tests", "spec")):
+            score += 40
+        if any(keyword in path for keyword in ("api", "service", "handler", "controller", "router", "middleware")):
+            score += 10
+
+        return score
+
     def _finalize_review(
         self,
         review_draft: CodeReviewDraft,
@@ -296,13 +349,15 @@ class ReviewService:
                 continue
 
             if file.hunks:
-                first_hunk = file.hunks[0]
+                best_hunk = self._select_best_hunk(file=file, finding=finding)
+                if best_hunk is None:
+                    best_hunk = file.hunks[0]
                 return [
                     ReviewEvidenceReference(
                         evidence_type=ReviewEvidenceType.DIFF_HUNK,
-                        label=f"{file.file_path} {first_hunk.header}",
+                        label=f"{file.file_path} {best_hunk.header}",
                         source_uri=f"{request.source_ref}#{file.file_path}",
-                        snippet=first_hunk.snippet,
+                        snippet=best_hunk.snippet,
                     )
                 ]
             return [
@@ -314,6 +369,38 @@ class ReviewService:
                 )
             ]
         return []
+
+    def _select_best_hunk(self, *, file: DiffFileChange, finding: ReviewFinding):
+        tokens = self._extract_relevance_tokens(
+            " ".join(
+                part
+                for part in (
+                    finding.title,
+                    finding.summary,
+                    finding.file_path or "",
+                )
+                if part
+            )
+        )
+        if not tokens:
+            return None
+
+        best_hunk = None
+        best_score = 0
+        for hunk in file.hunks:
+            hunk_text = f"{hunk.header} {hunk.snippet}".lower()
+            score = sum(1 for token in tokens if token in hunk_text)
+            if score > best_score:
+                best_score = score
+                best_hunk = hunk
+        return best_hunk
+
+    def _extract_relevance_tokens(self, text: str) -> set[str]:
+        return {
+            token.lower()
+            for token in re.findall(r"[A-Za-z0-9_]+", text)
+            if len(token) >= 3
+        }
 
     def _build_insufficient_context_reply(self, request: CodeReviewRequest) -> CodeReviewDraft:
         return CodeReviewDraft(

@@ -68,7 +68,17 @@ Interpretation:
 - feature list defines the product inventory and milestone plan
 - test cases define executable acceptance for implemented features
 
-## 2.1 Planning vs Handoff
+## 2.1 Skill Guidance
+
+When writing, reviewing, or refactoring code, apply `karpathy-guidelines` as the default behavioral lens:
+
+- think before coding
+- keep changes surgical
+- prefer the simplest solution that solves the request
+- state assumptions and tradeoffs explicitly
+- define verifiable success criteria before declaring done
+
+## 2.2 Planning vs Handoff
 
 `task-board.json` and `progress.md` serve different purposes and must both be maintained.
 
