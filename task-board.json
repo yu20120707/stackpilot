@@ -658,6 +658,28 @@
         "The review workflow docs describe the optimized flow."
       ],
       "notes": "Completed with patch-overview prompt context, risk-aware file ordering, relevance-based hunk selection for evidence backfill, and docs alignment in agent.md and the PRD."
+    },
+    {
+      "id": "INC-009",
+      "title": "Alert webhook ingress",
+      "milestone": "M12",
+      "status": "done",
+      "priority": 27,
+      "depends_on": [
+        "INC-008"
+      ],
+      "deliverables": [
+        "Alert webhook route",
+        "Incident seed normalization",
+        "Synthetic analysis request bridge",
+        "Alert ingress tests"
+      ],
+      "acceptance_checks": [
+        "Webhook requests are rejected when the optional alert secret does not match.",
+        "Alert payloads normalize into IncidentSeed objects and reuse the existing analysis pipeline.",
+        "Feishu replies only happen when an explicit anchor is supplied; no new thread is auto-created."
+      ],
+      "notes": "Completed with a new /api/alerts/events ingress, normalized alert seed contracts, background analysis reuse, and explicit no-anchor degradation to backend-only analysis."
     }
   ]
 }

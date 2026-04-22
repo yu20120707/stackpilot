@@ -1238,6 +1238,35 @@ Required fields:
 - Next recommended task:
   - `Start the new alert-ingress branch work on a fresh feature branch`
 
+### Session 027
+
+- Date: 2026-04-22
+- Primary task: `INC-009`
+- Objective: add a safe alert webhook ingress that normalizes external payloads into incident seeds, reuses the existing incident analysis flow, and only replies to Feishu when an anchor is supplied
+- Files changed:
+  - `app/api/alerts.py`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/incident/alert_ingress_flow.py`
+  - `feature-list.md`
+  - `progress.md`
+  - `README.md`
+  - `rd-incident-ai-assistant-prd.md`
+  - `task-board.json`
+  - `tests/test_alert_ingress.py`
+- Checks run:
+  - `.\.venv\Scripts\python.exe -m pytest tests/test_alert_ingress.py tests/test_feishu_callback.py tests/test_feishu_live_flow.py -q`
+- Result:
+  - `INC-009 complete`
+  - Alert payloads can now enter the system through `/api/alerts/events` as normalized incident seeds
+  - The existing analysis path can be reused without creating new Feishu threads, and replies only happen when an anchor is explicitly supplied
+  - Existing Feishu callback and incident flows still pass regression coverage
+- Blockers:
+  - No blocking issue remained for the safe alert-ingress slice
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
 ## Session Template
 
 Copy this block for the next session.

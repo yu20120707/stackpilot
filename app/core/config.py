@@ -57,6 +57,10 @@ class Settings(BaseSettings):
         default=None,
         validation_alias="FEISHU_VERIFICATION_TOKEN",
     )
+    alert_webhook_secret: str | None = Field(
+        default=None,
+        validation_alias="ALERT_WEBHOOK_SECRET",
+    )
     github_token: str | None = Field(
         default=None,
         validation_alias="GITHUB_TOKEN",
@@ -111,7 +115,13 @@ class Settings(BaseSettings):
     def normalize_log_level(cls, value: str) -> str:
         return value.upper()
 
-    @field_validator("feishu_encrypt_key", "feishu_verification_token", "github_token", mode="before")
+    @field_validator(
+        "feishu_encrypt_key",
+        "feishu_verification_token",
+        "alert_webhook_secret",
+        "github_token",
+        mode="before",
+    )
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         if value is None:

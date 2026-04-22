@@ -33,6 +33,7 @@ An evolving workflow agent for R&D teams, built around incident collaboration, A
 - [x] 结构化事故分析、结论摘要、待办草稿
 - [x] 复盘草稿生成与线程内回写
 - [x] 审批式动作队列
+- [x] 外部告警 webhook 归一化与 incident analysis 复用
 - [x] GitHub PR / inline patch 的 AI code review
 - [x] 审批后将 review draft 发布为 GitHub comment
 - [x] 在飞书线程内记录 finding 采纳 / 忽略反馈
@@ -46,6 +47,7 @@ An evolving workflow agent for R&D teams, built around incident collaboration, A
 - 所有高风险动作都走 `proposal-first + approval-first`
 - 仓库不会自动改业务代码、自动提交 PR、自动发布外部评论
 - `外部任务同步` 的适配器接口已经预留，但当前默认构建没有绑定真实任务系统
+- 外部告警 webhook 只能归一化成 incident seed 并复用既有分析链路，不会默认自动创建新的 Feishu 线程
 
 ### 适用场景
 
@@ -92,6 +94,7 @@ An evolving workflow agent for R&D teams, built around incident collaboration, A
 
 - `GET /healthz`
 - `POST /api/feishu/events`
+- `POST /api/alerts/events`
 
 ### 快速开始
 
@@ -138,6 +141,7 @@ Windows PowerShell:
 可选但常用：
 
 - `GITHUB_TOKEN`
+- `ALERT_WEBHOOK_SECRET`
 - `KNOWLEDGE_DIR`
 - `MEMORY_DIR`
 - `ACTION_DIR`
