@@ -109,6 +109,9 @@ class ReplyRenderer:
         self,
         trigger_command: TriggerCommand | None,
     ) -> list[str]:
+        if trigger_command is TriggerCommand.ANALYZE_INCIDENT:
+            return ["以下是基于当前告警证据的分诊结果：", ""]
+
         if trigger_command is TriggerCommand.SUMMARIZE_THREAD:
             return ["以下是基于当前线程的更新总结：", ""]
 

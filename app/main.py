@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.clients.feishu_client import FeishuClient, FeishuClientConfig
 from app.clients.github_review_client import GitHubReviewClient, GitHubReviewClientConfig
 from app.clients.llm_client import LLMClient, LLMClientConfig
+from app.api.alerts import router as alerts_router
 from app.api.feishu import router as feishu_router
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging
@@ -12,6 +13,7 @@ from app.services.growth.convention_promotion_service import ConventionPromotion
 from app.services.growth.skill_miner import SkillMiner
 from app.services.growth.skill_registry import SkillRegistry
 from app.services.incident.analysis_service import AnalysisService
+from app.services.incident.alert_ingress_flow import AlertIngressFlow
 from app.services.incident.feishu_live_flow import FeishuLiveFlow
 from app.services.incident.incident_action_service import IncidentActionService
 from app.services.incident.postmortem_renderer import PostmortemRenderer
@@ -44,6 +46,7 @@ class AppServices:
     github_review_client: GitHubReviewClient
     llm_client: LLMClient
     memory_service: MemoryService
+    alert_ingress_flow: AlertIngressFlow
     feishu_live_flow: FeishuLiveFlow
     code_review_flow: CodeReviewFlow
     workflow_router: WorkflowRouter
@@ -113,9 +116,16 @@ def build_services(settings: Settings) -> AppServices:
         canonical_convention_service=canonical_convention_service,
     )
     analysis_service = AnalysisService(llm_client)
+    reply_renderer = ReplyRenderer()
     task_sync_service = TaskSyncService()
     postmortem_service = PostmortemService(llm_client)
     postmortem_renderer = PostmortemRenderer()
+    alert_ingress_flow = AlertIngressFlow(
+        analysis_service=analysis_service,
+        knowledge_base=knowledge_base,
+        reply_renderer=reply_renderer,
+        feishu_client=feishu_client,
+    )
     incident_action_service = IncidentActionService(
         action_queue_service=action_queue_service,
         task_sync_service=task_sync_service,
@@ -128,7 +138,6 @@ def build_services(settings: Settings) -> AppServices:
         skill_registry=skill_registry,
         canonical_convention_service=canonical_convention_service,
     )
-    reply_renderer = ReplyRenderer()
     review_renderer = ReviewRenderer()
     review_service = ReviewService(llm_client)
     review_policy_service = ReviewPolicyService(knowledge_base)
@@ -178,6 +187,7 @@ def build_services(settings: Settings) -> AppServices:
         github_review_client=github_review_client,
         llm_client=llm_client,
         memory_service=memory_service,
+        alert_ingress_flow=alert_ingress_flow,
         feishu_live_flow=feishu_live_flow,
         code_review_flow=code_review_flow,
         workflow_router=workflow_router,
@@ -205,6 +215,7 @@ def create_app() -> FastAPI:
         await services.aclose()
 
     app.include_router(feishu_router)
+    app.include_router(alerts_router)
     return app
 
 

@@ -1,6 +1,6 @@
 {
   "project": "stackpilot",
-  "last_updated": "2026-04-12",
+  "last_updated": "2026-04-22",
   "status_definitions": {
     "not_started": "No implementation work has begun.",
     "in_progress": "Actively being implemented or refined.",
@@ -636,6 +636,72 @@
         "Full regression tests still pass after the package reorganization."
       ],
       "notes": "Completed by moving incident-domain orchestration into app/services/incident, growth-domain orchestration into app/services/growth, updating imports across app and tests, and fixing prompt-path defaults so the reorganization remains runtime-safe."
+    },
+    {
+      "id": "CR-011",
+      "title": "Tighten code review context ordering and evidence anchoring",
+      "milestone": "M12",
+      "status": "done",
+      "priority": 26,
+      "depends_on": [
+        "CR-003"
+      ],
+      "deliverables": [
+        "Risk-aware file ordering",
+        "Patch overview prompt block",
+        "Relevant hunk backfill",
+        "PRD and working-contract sync"
+      ],
+      "acceptance_checks": [
+        "Review prompts prioritize higher-risk files instead of flat file order.",
+        "Finding evidence backfills from the best-matching hunk when possible.",
+        "The review workflow docs describe the optimized flow."
+      ],
+      "notes": "Completed with patch-overview prompt context, risk-aware file ordering, relevance-based hunk selection for evidence backfill, and docs alignment in agent.md and the PRD."
+    },
+    {
+      "id": "INC-009",
+      "title": "Alert webhook ingress",
+      "milestone": "M12",
+      "status": "done",
+      "priority": 27,
+      "depends_on": [
+        "INC-008"
+      ],
+      "deliverables": [
+        "Alert webhook route",
+        "Incident seed normalization",
+        "Synthetic analysis request bridge",
+        "Alert ingress tests"
+      ],
+      "acceptance_checks": [
+        "Webhook requests are rejected when the optional alert secret does not match.",
+        "Alert payloads normalize into IncidentSeed objects and reuse the existing analysis pipeline.",
+        "Feishu replies only happen when an explicit anchor is supplied; no new thread is auto-created."
+      ],
+      "notes": "Completed with a new /api/alerts/events ingress, normalized alert seed contracts, background analysis reuse, and explicit no-anchor degradation to backend-only analysis."
+    },
+    {
+      "id": "INC-010",
+      "title": "Incident triage-first mode",
+      "milestone": "M12",
+      "status": "done",
+      "priority": 28,
+      "depends_on": [
+        "INC-009"
+      ],
+      "deliverables": [
+        "Incident triage prompt branch",
+        "Triage-specific insufficient-context reply",
+        "Alert reply prefix update",
+        "Triage regression tests"
+      ],
+      "acceptance_checks": [
+        "Alert-driven incident analysis is explicitly framed as first-pass triage.",
+        "Weak evidence paths list concrete missing evidence and first actions instead of implying root cause.",
+        "Feishu incident replies use a triage prefix when the trigger command is analyze_incident."
+      ],
+      "notes": "Completed by adding an analyze_incident triage prompt branch, incident-specific insufficient-context guidance, a Feishu triage prefix, and regression tests covering the prompt and rendered reply shape."
     }
   ]
 }

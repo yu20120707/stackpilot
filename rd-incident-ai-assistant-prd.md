@@ -5,12 +5,12 @@
 - 项目名称：研发工作流 Agent
 - 项目定位：面向研发团队的受控成长型工作流 Agent
 - 文档版本：v0.4
-- 更新时间：2026-04-11
+- 更新时间：2026-04-22
 - 当前实现基础：飞书故障线程分析助手
 
 ## 2. 一句话定位
 
-`一个以飞书和代码变更为主要入口，能够做故障协作分析、代码评审辅助，并在审批边界内持续沉淀团队经验的工作流 Agent。`
+`一个以飞书、外部告警 webhook 和代码变更为主要入口，能够做故障协作分析、代码评审辅助，并在审批边界内持续沉淀团队经验的工作流 Agent。`
 
 ## 3. 背景与问题
 
@@ -42,6 +42,7 @@
 本产品要做：
 
 - 飞书线程中的 incident workflow
+- 外部告警 webhook 进入后归一化为 incident seed，并复用既有 incident analysis 链路
 - diff / patch / PR 输入下的 AI code review workflow
 - 审批约束下的任务草稿、复盘草稿、review 草稿
 - 团队偏好记忆与候选 skill 沉淀
@@ -54,6 +55,7 @@
 - 无审批自动发布评论或自动执行高风险外部动作
 - 自动改写高权威项目文档
 - 默认自动 incident detection
+- 默认把外部告警自动变成新 Feishu 线程
 
 ## 6. 核心设计原则
 
@@ -79,6 +81,9 @@
 
 用户在飞书线程中手动触发，系统读取线程、检索依据、输出结构化分析。
 
+外部告警 webhook 也可以作为受控输入进入同一条 incident 分析链路，但它只会归一化成 incident seed，默认不会自动创建新的 Feishu 线程。
+对告警输入，系统默认采用 triage-first 口径，先输出影响范围、缺失证据和首要动作，不直接承诺根因。
+
 ### 7.2 Incident Follow-up And Closure
 
 系统基于 thread memory 和新增信息更新判断，并给出结论摘要、待办草稿、复盘草稿。
@@ -95,6 +100,11 @@
 
 系统记录修正、采纳和失败结果，从中提炼候选 skill，但不会跳过审批直接生效。
 
+### 7.6 Alert Ingress
+
+外部监控或告警系统可以把规范化后的告警 payload 推给系统；系统先做归一化和证据整理，再根据是否已有 Feishu 锚点决定是回写到现有线程，还是只做后端分析与记录。
+告警入口的输出默认是分诊结果而不是根因结论；如果证据不足，系统应明确列出缺失信息和下一步补证据动作。
+
 ## 8. 用户流程
 
 ### 8.1 Incident Workflow
@@ -108,12 +118,13 @@
 
 ### 8.2 Code Review Workflow
 
-1. 用户手动提交 code diff / PR patch。
-2. 系统读取变更并标准化评审请求。
-3. 系统检索 review policy、历史经验和规则依据。
-4. 系统输出结构化 findings 草稿。
-5. 用户确认后，系统再发布到外部 review 平台。
-6. 系统记录哪些 finding 被采纳、忽略或修正。
+1. 用户在飞书线程里手动提交 diff / patch / PR 链接并触发 review。
+2. 系统先做输入解析，只保留一个可审查目标，然后把 PR 链接或 patch 标准化成 review request。
+3. 如果是 PR 输入，系统拉取 GitHub diff，并用 DiffReader 把变更拆成文件、hunk 和摘要。
+4. 系统补充 review focus、review policy citation 和团队规则依据，再拼成结构化输入交给 LLM。
+5. LLM 返回结构化 review draft，系统保留 findings、风险等级、缺失上下文和发布建议。
+6. 如果是 GitHub PR，系统先生成待审批的 publish action，用户确认后才真正发布到外部 review 平台。
+7. 系统记录哪些 finding 被采纳、忽略或修正，并把 outcome 回流到 review state 和 memory。
 
 ## 9. 当前实现与后续扩展
 
@@ -122,6 +133,7 @@
 当前代码库已经具备：
 
 - Feishu 手动触发
+- 告警 webhook 接入与 Incident Seed 归一化
 - 当前线程分析
 - 本地知识引用
 - 结构化 incident summary

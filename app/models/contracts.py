@@ -382,6 +382,36 @@ class AnalysisRequest(BaseModel):
     follow_up_context: FollowUpContext | None = None
 
 
+class FeishuTarget(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    chat_id: NonEmptyText = Field(min_length=1)
+    thread_id: NonEmptyText = Field(min_length=1)
+    trigger_message_id: NonEmptyText = Field(min_length=1)
+
+
+class IncidentSeed(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: NonEmptyText = Field(min_length=1)
+    source: str | None = None
+    summary: str | None = None
+    severity: str | None = None
+    evidence_lines: list[NonEmptyText] = Field(default_factory=list)
+    feishu_target: FeishuTarget | None = None
+    raw_payload: dict[str, object] = Field(default_factory=dict)
+
+
+class AlertIngressResult(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    success: bool
+    delivered_to_feishu: bool = False
+    reply_message_id: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+
+
 class MemoryScope(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 

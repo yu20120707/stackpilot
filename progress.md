@@ -1213,6 +1213,88 @@ Required fields:
 - Next recommended task:
   - `Use tests/live_feishu_robot_prompts.md in Feishu and verify whether live replies now show relevant references`
 
+### Session 026
+
+- Date: 2026-04-22
+- Primary task: `CR-011`
+- Objective: tighten code review quality by prioritizing higher-risk files in the prompt, adding a patch overview, and backfilling findings with the most relevant diff hunk while keeping the existing approval-gated publish flow intact
+- Files changed:
+  - `agent.md`
+  - `app/prompts/code_review_prompt.md`
+  - `app/services/review/service.py`
+  - `progress.md`
+  - `rd-incident-ai-assistant-prd.md`
+  - `task-board.json`
+  - `tests/test_code_review_flow.py`
+- Checks run:
+  - `.\.venv\Scripts\python.exe -m pytest tests/test_diff_reader.py tests/test_code_review_flow.py -q`
+- Result:
+  - `CR-011` complete
+  - Review prompts now carry a patch overview and risk-aware file ordering instead of relying on a flat file list
+  - Evidence backfill now prefers the most relevant hunk for a finding instead of always using the first hunk
+  - PRD and working-contract docs now describe the optimized CR workflow rather than the older straight diff-to-draft flow
+- Blockers:
+  - No blocking issue remained for the current review-flow refinement
+- Next recommended task:
+  - `Start the new alert-ingress branch work on a fresh feature branch`
+
+### Session 027
+
+- Date: 2026-04-22
+- Primary task: `INC-009`
+- Objective: add a safe alert webhook ingress that normalizes external payloads into incident seeds, reuses the existing incident analysis flow, and only replies to Feishu when an anchor is supplied
+- Files changed:
+  - `app/api/alerts.py`
+  - `app/core/config.py`
+  - `app/main.py`
+  - `app/models/contracts.py`
+  - `app/services/incident/alert_ingress_flow.py`
+  - `feature-list.md`
+  - `progress.md`
+  - `README.md`
+  - `rd-incident-ai-assistant-prd.md`
+  - `task-board.json`
+  - `tests/test_alert_ingress.py`
+- Checks run:
+  - `.\.venv\Scripts\python.exe -m pytest tests/test_alert_ingress.py tests/test_feishu_callback.py tests/test_feishu_live_flow.py -q`
+- Result:
+  - `INC-009 complete`
+  - Alert payloads can now enter the system through `/api/alerts/events` as normalized incident seeds
+  - The existing analysis path can be reused without creating new Feishu threads, and replies only happen when an anchor is explicitly supplied
+  - Existing Feishu callback and incident flows still pass regression coverage
+- Blockers:
+  - No blocking issue remained for the safe alert-ingress slice
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
+### Session 028
+
+- Date: 2026-04-22
+- Primary task: `INC-010`
+- Objective: shift alert-driven incident analysis from thread-summary wording to a triage-first mode that highlights missing evidence, affected surface, and the first safe action
+- Files changed:
+  - `README.md`
+  - `app/prompts/analysis_prompt.md`
+  - `app/services/incident/analysis_service.py`
+  - `app/services/incident/reply_renderer.py`
+  - `feature-list.md`
+  - `progress.md`
+  - `rd-incident-ai-assistant-prd.md`
+  - `task-board.json`
+  - `tests/test_analysis_service.py`
+  - `tests/test_reply_renderer.py`
+- Checks run:
+  - `.\\.venv\\Scripts\\python.exe -m pytest tests/test_analysis_service.py tests/test_reply_renderer.py tests/test_alert_ingress.py tests/test_feishu_live_flow.py -q`
+  - `Get-Content task-board.json -Raw | ConvertFrom-Json | Out-Null`
+- Result:
+  - `INC-010 complete`
+  - Alert-driven incident analysis now has an explicit triage-first prompt branch, incident-specific insufficient-context guidance, and a Feishu reply prefix that labels the output as triage
+  - Product docs and feature inventory now reflect the triage-first behavior instead of only the older thread-summary wording
+- Blockers:
+  - No blocking issue remained for the bounded triage refinement
+- Next recommended task:
+  - `No remaining planned task in task-board.json`
+
 ## Session Template
 
 Copy this block for the next session.

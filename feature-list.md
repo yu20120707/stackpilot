@@ -7,7 +7,7 @@ This document defines the product-level feature inventory for the next version o
 Current codebase reality:
 
 - the implemented foundation is still `Feishu incident analysis`
-- the implemented expansion now includes `controlled growth + action loop + AI code review + org convention shaping + canonical convention gateway`
+- the implemented expansion now includes `controlled growth + action loop + AI code review + org convention shaping + canonical convention gateway + alert ingress`
 
 This file therefore serves two purposes:
 
@@ -66,6 +66,8 @@ These are the incident-domain upgrades around the implemented baseline. Continui
 | INC-006 | Approval-backed action execution | Implemented | High | Confirm, execute, and write back external task results |
 | INC-007 | Incident interaction recorder | Implemented | Medium | Record trigger, output, correction, approval, and adoption signals |
 | INC-008 | Team-style postmortem output | Implemented | Medium | Let tenant-scoped team conventions shape draft structure and section labels |
+| INC-009 | Alert webhook ingress | Implemented | Medium | Normalize external alert payloads into incident seeds and reuse the existing analysis path, replying to Feishu only when an anchor is provided |
+| INC-010 | Incident triage-first mode | Implemented | Medium | Treat alert inputs as first-pass triage, prioritizing missing evidence, affected surface, and first safe actions |
 
 ### INC-001 Explicit Thread Memory
 
@@ -96,6 +98,26 @@ Goal:
 User-visible outcome:
 
 - users first see a draft package, then decide whether to execute it
+
+### INC-009 Alert Webhook Ingress
+
+Goal:
+
+- accept normalized alert payloads as a controlled incident input without introducing automatic thread creation
+
+User-visible outcome:
+
+- alert payloads can be analyzed through the existing incident flow, and Feishu replies only happen when an existing anchor is supplied
+
+### INC-010 Incident Triage-First Mode
+
+Goal:
+
+- make alert-driven incident analysis prioritize triage over root-cause speculation
+
+User-visible outcome:
+
+- alert replies now call out missing evidence, impacted surface, and first actions before any root-cause claim
 
 ## 6. Growth Kernel Features
 

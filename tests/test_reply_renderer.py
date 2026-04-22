@@ -47,6 +47,26 @@ def test_reply_renderer_formats_success_reply() -> None:
     assert "缺少信息：" not in rendered
 
 
+def test_reply_renderer_formats_analyze_incident_reply() -> None:
+    renderer = ReplyRenderer()
+    reply = StructuredSummary(
+        status=AnalysisResultStatus.SUCCESS,
+        confidence=ConfidenceLevel.MEDIUM,
+        current_assessment="当前更像是一次发布后导致的支付服务异常。",
+        known_facts=["支付服务出现 5xx 告警"],
+        impact_scope="当前主要影响支付相关请求。",
+        next_actions=["补充错误日志", "确认最近一次发布内容"],
+        citations=build_citations(),
+        missing_information=["详细错误日志"],
+    )
+
+    rendered = renderer.render_for_trigger(reply, trigger_command=TriggerCommand.ANALYZE_INCIDENT)
+
+    assert "以下是基于当前告警证据的分诊结果：" in rendered
+    assert "当前判断：" in rendered
+    assert "Payment Service SOP" in rendered
+
+
 def test_reply_renderer_formats_insufficient_context_reply() -> None:
     renderer = ReplyRenderer()
     reply = StructuredSummary(
