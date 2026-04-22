@@ -67,6 +67,7 @@ These are the incident-domain upgrades around the implemented baseline. Continui
 | INC-007 | Incident interaction recorder | Implemented | Medium | Record trigger, output, correction, approval, and adoption signals |
 | INC-008 | Team-style postmortem output | Implemented | Medium | Let tenant-scoped team conventions shape draft structure and section labels |
 | INC-009 | Alert webhook ingress | Implemented | Medium | Normalize external alert payloads into incident seeds and reuse the existing analysis path, replying to Feishu only when an anchor is provided |
+| INC-010 | Incident triage-first mode | Implemented | Medium | Treat alert inputs as first-pass triage, prioritizing missing evidence, affected surface, and first safe actions |
 
 ### INC-001 Explicit Thread Memory
 
@@ -107,6 +108,16 @@ Goal:
 User-visible outcome:
 
 - alert payloads can be analyzed through the existing incident flow, and Feishu replies only happen when an existing anchor is supplied
+
+### INC-010 Incident Triage-First Mode
+
+Goal:
+
+- make alert-driven incident analysis prioritize triage over root-cause speculation
+
+User-visible outcome:
+
+- alert replies now call out missing evidence, impacted surface, and first actions before any root-cause claim
 
 ## 6. Growth Kernel Features
 

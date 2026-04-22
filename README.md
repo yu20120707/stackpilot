@@ -48,6 +48,7 @@ An evolving workflow agent for R&D teams, built around incident collaboration, A
 - 仓库不会自动改业务代码、自动提交 PR、自动发布外部评论
 - `外部任务同步` 的适配器接口已经预留，但当前默认构建没有绑定真实任务系统
 - 外部告警 webhook 只能归一化成 incident seed 并复用既有分析链路，不会默认自动创建新的 Feishu 线程
+- 告警输入默认走 triage-first 口径，优先补证据、定级和首要动作，不直接承诺根因
 
 ### 适用场景
 
@@ -60,7 +61,7 @@ An evolving workflow agent for R&D teams, built around incident collaboration, A
 
 1. 用户在飞书线程里显式触发命令
 2. 系统加载线程消息、历史记忆和相关知识文档
-3. LLM 生成结构化分析或 review draft
+3. LLM 生成结构化分析或 review draft；告警输入默认先走 triage 口径，优先给出缺失证据和首要动作
 4. 系统先返回草稿，再根据需要生成待审批动作
 5. 用户通过线程命令批准动作
 6. 系统执行回写、记录结果、更新记忆和审计日志

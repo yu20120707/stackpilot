@@ -42,6 +42,12 @@ class AnalysisService:
         citations = citations or []
 
         if self._should_return_insufficient_context(request, citations):
+            if request.trigger_command is TriggerCommand.ANALYZE_INCIDENT:
+                return self._finalize_reply(
+                    self._build_incident_insufficient_context_reply(request, citations),
+                    request=request,
+                    citations=citations,
+                )
             return self._finalize_reply(
                 self._build_insufficient_context_reply(request, citations),
                 request=request,
@@ -254,6 +260,16 @@ class AnalysisService:
         )
 
     def _build_mode_specific_prompt_block(self, request: AnalysisRequest) -> str:
+        if request.trigger_command is TriggerCommand.ANALYZE_INCIDENT:
+            return (
+                "\nincident_triage_requirements:\n"
+                "- treat this mode as first-pass incident triage, not root cause analysis\n"
+                "- prioritize severity, affected surface, missing evidence, and the first safe action\n"
+                "- separate observed facts from hypotheses\n"
+                "- if the evidence is weak, prefer insufficient_context with low confidence\n"
+                "- next_actions should start with logs, metrics, traces, recent change records, and owner routing\n"
+            )
+
         if request.trigger_command is not TriggerCommand.SUMMARIZE_THREAD:
             return ""
 
@@ -367,6 +383,22 @@ class AnalysisService:
             missing_information=self._build_missing_information(request),
         )
 
+    def _build_incident_insufficient_context_reply(
+        self,
+        request: AnalysisRequest,
+        citations: list[KnowledgeCitation],
+    ) -> StructuredSummary:
+        return StructuredSummary(
+            status=AnalysisResultStatus.INSUFFICIENT_CONTEXT,
+            confidence=ConfidenceLevel.LOW,
+            current_assessment="当前告警证据不足，先补齐日志、指标、trace 和最近变更，再判断影响范围和可能原因。",
+            known_facts=self._extract_known_facts(request),
+            impact_scope="当前无法可靠判断。",
+            next_actions=self._build_incident_next_actions(),
+            citations=citations,
+            missing_information=self._build_incident_missing_information(request),
+        )
+
     def _build_temporary_failure_reply(
         self,
         request: AnalysisRequest,
@@ -396,6 +428,14 @@ class AnalysisService:
             "补充影响范围和当前恢复进展",
         ]
 
+    def _build_incident_next_actions(self) -> list[str]:
+        return [
+            "补充错误日志、异常栈和 trace_id",
+            "确认受影响服务、环境和错误率曲线",
+            "对照最近发布、配置或开关变更",
+            "确认当前处置动作和负责人",
+        ]
+
     def _build_missing_information(self, request: AnalysisRequest) -> list[str]:
         observed_text = " ".join(message.text.lower() for message in request.thread_messages)
         missing: list[str] = []
@@ -408,3 +448,20 @@ class AnalysisService:
             missing.append("影响范围")
 
         return missing or ["更多可验证的上下文"]
+
+    def _build_incident_missing_information(self, request: AnalysisRequest) -> list[str]:
+        observed_text = " ".join(message.text.lower() for message in request.thread_messages)
+        missing: list[str] = []
+
+        if not any(term in observed_text for term in ("log", "日志", "异常栈", "error")):
+            missing.append("错误日志或异常栈")
+        if not any(term in observed_text for term in ("trace", "trace_id", "request_id", "链路")):
+            missing.append("trace_id / request_id")
+        if not any(term in observed_text for term in ("metric", "metrics", "指标", "5xx", "timeout", "rt", "p95", "p99")):
+            missing.append("监控指标")
+        if not any(term in observed_text for term in ("deploy", "release", "发布", "变更", "配置", "开关")):
+            missing.append("最近变更记录")
+        if not any(term in observed_text for term in ("impact", "影响", "服务", "接口", "用户", "租户")):
+            missing.append("影响范围")
+
+        return missing or ["更多可验证的告警证据"]

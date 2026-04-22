@@ -104,6 +104,13 @@ async def test_analysis_service_returns_insufficient_context_without_llm_call(tm
 
     assert result.status == AnalysisResultStatus.INSUFFICIENT_CONTEXT
     assert result.confidence == ConfidenceLevel.LOW
+    assert result.current_assessment.startswith("当前告警证据不足")
+    assert result.next_actions == [
+        "补充错误日志、异常栈和 trace_id",
+        "确认受影响服务、环境和错误率曲线",
+        "对照最近发布、配置或开关变更",
+        "确认当前处置动作和负责人",
+    ]
     assert result.missing_information
     assert llm_client.calls == []
 
@@ -208,6 +215,28 @@ async def test_analysis_service_adds_conclusion_summary_and_todo_draft_for_summa
     assert "closing_summary_requirements" in llm_client.calls[0][1]
     assert "conclusion_summary" in llm_client.calls[0][1]
     assert "todo_draft" in llm_client.calls[0][1]
+
+
+@pytest.mark.anyio
+async def test_analysis_service_adds_triage_requirements_for_incident_mode(tmp_path: Path) -> None:
+    prompt_path = tmp_path / "analysis_prompt.md"
+    prompt_path.write_text("Return structured JSON only.", encoding="utf-8")
+    llm_client = FakeLLMClient(load_summary_fixture("structured_summary_success.json"))
+    service = AnalysisService(llm_client, prompt_path=prompt_path)
+
+    result = await service.summarize(
+        build_request(
+            "payment-api 5xx spike after deploy",
+            "we rolled back payment-api and the error rate is dropping",
+        ),
+        citations=build_citations(),
+    )
+
+    assert result.status == AnalysisResultStatus.SUCCESS
+    assert len(llm_client.calls) == 1
+    assert "incident_triage_requirements" in llm_client.calls[0][1]
+    assert "first-pass incident triage" in llm_client.calls[0][1]
+    assert "next_actions should start with logs, metrics, traces" in llm_client.calls[0][1]
 
 
 def test_analysis_service_normalizes_common_status_and_citation_shapes(tmp_path: Path) -> None:

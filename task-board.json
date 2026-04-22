@@ -680,6 +680,28 @@
         "Feishu replies only happen when an explicit anchor is supplied; no new thread is auto-created."
       ],
       "notes": "Completed with a new /api/alerts/events ingress, normalized alert seed contracts, background analysis reuse, and explicit no-anchor degradation to backend-only analysis."
+    },
+    {
+      "id": "INC-010",
+      "title": "Incident triage-first mode",
+      "milestone": "M12",
+      "status": "done",
+      "priority": 28,
+      "depends_on": [
+        "INC-009"
+      ],
+      "deliverables": [
+        "Incident triage prompt branch",
+        "Triage-specific insufficient-context reply",
+        "Alert reply prefix update",
+        "Triage regression tests"
+      ],
+      "acceptance_checks": [
+        "Alert-driven incident analysis is explicitly framed as first-pass triage.",
+        "Weak evidence paths list concrete missing evidence and first actions instead of implying root cause.",
+        "Feishu incident replies use a triage prefix when the trigger command is analyze_incident."
+      ],
+      "notes": "Completed by adding an analyze_incident triage prompt branch, incident-specific insufficient-context guidance, a Feishu triage prefix, and regression tests covering the prompt and rendered reply shape."
     }
   ]
 }
